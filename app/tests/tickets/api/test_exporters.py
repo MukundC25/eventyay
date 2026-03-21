@@ -26,7 +26,6 @@ SAMPLE_EXPORTER_CONFIG = {
             ],
         },
         {'name': 'paid_only', 'required': False},
-        {'name': 'approval_pending_only', 'required': False},
         {'name': 'include_payment_amounts', 'required': False},
         {'name': 'group_multiple_choice', 'required': False},
         {'name': 'date_from', 'required': False},

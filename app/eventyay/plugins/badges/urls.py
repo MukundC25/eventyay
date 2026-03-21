@@ -14,7 +14,6 @@ from .views import (
     LayoutDelete,
     LayoutEditorView,
     LayoutListView,
-    LayoutSettingsView,
     LayoutSetDefault,
     OrderPrintDo,
 )
@@ -44,11 +43,6 @@ urlpatterns = [
         'control/event/<orgslug:organizer>/<slug:event>/badges/<int:layout>/delete',
         LayoutDelete.as_view(),
         name='delete',
-    ),
-    path(
-        'control/event/<orgslug:organizer>/<slug:event>/badges/<int:layout>/settings',
-        LayoutSettingsView.as_view(),
-        name='settings',
     ),
     path(
         'control/event/<orgslug:organizer>/<slug:event>/badges/<int:layout>/editor',

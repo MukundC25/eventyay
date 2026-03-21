@@ -28,7 +28,6 @@ class NestedProductAssignmentSerializer(I18nAwareModelSerializer):
 
 class BadgeLayoutSerializer(I18nAwareModelSerializer):
     layout = CompatibleJSONField()
-    ask_user_fields = CompatibleJSONField()
     product_assignments = NestedProductAssignmentSerializer(many=True)
     size = CompatibleJSONField()
 
@@ -38,9 +37,7 @@ class BadgeLayoutSerializer(I18nAwareModelSerializer):
             'id',
             'name',
             'default',
-            'allow_customization',
             'layout',
-            'ask_user_fields',
             'size',
             'background',
             'product_assignments',

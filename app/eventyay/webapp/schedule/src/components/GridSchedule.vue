@@ -1,5 +1,5 @@
 <template lang="pug">
-.c-grid-schedule(:class="'density-' + density")
+.c-grid-schedule
 	.sticky-header
 		.rooms-bar(ref="roomsBar")
 			.rooms-inner(:style="{'--total-rooms': rooms.length, 'min-width': scrollContentWidth ? (scrollContentWidth + 'px') : null}")
@@ -28,7 +28,6 @@
 					:timezone="timezone",
 					:style="getSessionStyle(session)",
 					:showAbstract="false", :showRoom="false",
-					:showFavCount="showFavCount",
 					:faved="favs.includes(session.id)",
 					:hasAmPm="hasAmPm",
 					:onHomeServer="onHomeServer",
@@ -65,7 +64,6 @@
 							:timezone="timezone",
 							:style="getChunkSessionStyle(session, chunk)",
 							:showAbstract="false", :showRoom="false",
-							:showFavCount="showFavCount",
 							:faved="favs.includes(session.id)",
 							:hasAmPm="hasAmPm",
 							:onHomeServer="onHomeServer",
@@ -115,15 +113,7 @@ export default {
 		hasAmPm: Boolean,
 		scrollParent: Element,
 		onHomeServer: Boolean,
-		showFavCount: {
-			type: Boolean,
-			default: false
-		},
-		disableAutoScroll: Boolean,
-		density: {
-			type: String,
-			default: 'default'
-		}
+		disableAutoScroll: Boolean
 	},
 	data () {
 		return {
@@ -276,7 +266,6 @@ export default {
 			return this.timeslices.filter(slice => slice.date.minute() % 30 === 0)
 		},
 		gridStyle () {
-			const scale = this.density === 'compact' ? 0.65 : this.density === 'comfortable' ? 1.4 : 1
 			let rows = ''
 			rows += this.timeslices.map((slice, index) => {
 				const next = this.timeslices[index + 1]
@@ -288,7 +277,6 @@ export default {
 				} else if (next) {
 					height = Math.min(60, next.date.diff(slice.date, 'minutes') * 2)
 				}
-				height = Math.round(height * scale)
 				return `[${slice.name}] minmax(${height}px, auto)`
 			}).join(' ')
 			return {
@@ -578,7 +566,7 @@ export default {
 	background-color: $clr-grey-50
 	.sticky-header
 		position: sticky
-		top: calc(var(--pretalx-sticky-top-offset, 0px) + 30px + var(--pretalx-version-warning-height, 0px))
+		top: calc(var(--pretalx-sticky-top-offset, 0px) + 30px)
 		z-index: 25
 		background-color: $clr-white
 	.rooms-bar
@@ -598,16 +586,15 @@ export default {
 					display: inline-flex
 					justify-content: center
 					align-items: center
-					border: 1px solid $clr-grey-400
+					border: 2px solid $clr-grey-400
 					border-radius: 100%
-					height: 1.1em
-					width: 1.1em
+					height: 20px
+					width: 20px
 					font-weight: bold
-					font-size: 0.75em
-					line-height: 1
+					font-size: 12px
 					color: $clr-grey-500
 					background: $clr-white
-					margin-left: 0.4em
+					margin-left: 8px
 					cursor: pointer
 					user-select: none
 					flex-shrink: 0
@@ -735,30 +722,6 @@ export default {
 		z-index: 30
 	.print-grids
 		display: none
-
-.c-grid-schedule.density-compact
-	.timeslice
-		padding: 4px 6px 0 10px
-		font-size: 12px
-	.rooms-bar .rooms-inner > .room
-		font-size: 14px
-		padding: 4px 2px
-	.grid
-		grid-template-columns: 60px repeat(var(--total-rooms), 1fr) auto
-	.rooms-inner
-		grid-template-columns: 60px repeat(var(--total-rooms), 1fr) auto
-
-.c-grid-schedule.density-comfortable
-	.timeslice
-		padding: 12px 14px 0 20px
-		font-size: 16px
-	.rooms-bar .rooms-inner > .room
-		font-size: 20px
-		padding: 12px 6px
-	.grid
-		grid-template-columns: 96px repeat(var(--total-rooms), 1fr) auto
-	.rooms-inner
-		grid-template-columns: 96px repeat(var(--total-rooms), 1fr) auto
 
 @media print
 	.c-grid-schedule

@@ -14,7 +14,6 @@
     justify-content: center;
     margin-left: -15px;
     margin-right: -15px;
-    gap: 0 15px;
 }
 
 #featured-speakers #featured-speakers-heading {
@@ -173,27 +172,15 @@
 }
 
 @media (max-width: 768px) {
-    #featured-speakers .featured-speaker-column {
-        width: 100%;
-        max-width: 100%;
-        flex: 0 0 100%;
-    }
-
-    #featured-speakers .featured-speakers-grid {
-        margin-left: 0;
-        margin-right: 0;
-        gap: 0;
-    }
-
     #featured-speakers .featured-speaker-summary .caption h4 {
-        font-size: 20px;
+        font-size: 22px;
     }
 
     #featured-speakers .featured-speaker-sessions h4 {
-        font-size: 15px;
+        font-size: 16px;
     }
 
     #featured-speakers .featured-speaker-session-title {
-        font-size: 13px;
+        font-size: 14px;
     }
 }

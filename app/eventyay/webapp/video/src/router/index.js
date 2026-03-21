@@ -9,7 +9,6 @@ import Schedule from '@schedule/components/ScheduleView'
 import Talk from '@schedule/components/TalkDetail'
 import Speakers from '@schedule/components/SpeakersList'
 import Speaker from '@schedule/components/SpeakerDetail'
-import PublicStars from '@schedule/components/PublicStars'
 import Exhibitor from 'views/exhibitors/item'
 import ContactRequests from 'views/contact-requests'
 import Preferences from 'views/preferences'
@@ -96,10 +95,7 @@ const routes = [
 				path: 'schedule/talks/:talkId',
 				name: 'schedule:talk',
 				component: Talk,
-				props: route => ({
-					talkId: route.params.talkId,
-					baseUrl: window.eventyay?.eventUrl || ''
-				})
+				props: true
 			},
 			{
 				path: 'schedule/speakers',
@@ -111,15 +107,6 @@ const routes = [
 				name: 'schedule:speaker',
 				component: Speaker,
 				props: true
-			},
-			{
-				path: 'schedule/people/:userCode/stars',
-				name: 'schedule:public-stars',
-				component: PublicStars,
-				props: route => ({
-					userCode: route.params.userCode,
-					baseUrl: window.eventyay?.eventUrl || ''
-				})
 			},
 			{
 				path: 'exhibitors/:exhibitorId',

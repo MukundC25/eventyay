@@ -1,29 +1,8 @@
 onReady(() => {
     const element = document.querySelector("[data-toggle=sidebar]")
     const sidebar = document.querySelector("aside.sidebar")
-    const navbar = document.querySelector("nav.navbar")
     const cls = "sidebar-uncollapsed"
-    const isMobile = () => window.matchMedia("(max-width: 768px)").matches
-
-    const syncMobileSidebarOffset = () => {
-        if (!sidebar) return
-
-        if (isMobile() && navbar) {
-            const navbarHeight = navbar.getBoundingClientRect().height
-            sidebar.style.top = `${navbarHeight}px`
-            sidebar.style.height = `calc(100vh - ${navbarHeight}px)`
-            return
-        }
-
-        sidebar.style.removeProperty("top")
-        sidebar.style.removeProperty("height")
-    }
-
-    if (sidebar) {
-        syncMobileSidebarOffset()
-        window.addEventListener("resize", syncMobileSidebarOffset)
-        window.addEventListener("orientationchange", syncMobileSidebarOffset)
-    }
+    const isMobile = () => window.matchMedia("(max-width: 767px)").matches
 
     if (sidebar && localStorage["sidebarVisible"]) {
         sidebar.classList.add(cls)
@@ -52,6 +31,5 @@ onReady(() => {
                 localStorage["sidebarVisible"] = ""
             }
         })
-
     }
 })
