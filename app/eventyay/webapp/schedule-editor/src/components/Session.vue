@@ -13,7 +13,7 @@
 				.role-item(v-for="role in session.roles", :key="role.id")
 					.role-header
 						span.role-name {{ getLocalizedString(role.name) }}
-						span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} filled
+						span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} assigned
 					.role-assignees
 						span(v-for="(user, i) in role.assigned")
 							i.fa.fa-user.mr-1
