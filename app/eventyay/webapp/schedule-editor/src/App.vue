@@ -56,7 +56,7 @@
 						a(v-if="organizerSlug && eventSlug", :href="`${api.getOrgaEventBase()}/submissions/${editorSession.code}/`") {{ getLocalizedString(editorSession.title) }}
 						span(v-else) {{ getLocalizedString(editorSession.title) }}
 					.data
-						.data-row(v-if="editorSession.code && editorSession.speakers && editorSession.speakers.length > 0").form-group.row
+						.data-row(v-if="editorSession.code && editorSession.speakers && editorSession.speakers.length > 0 && !isShiftsMode").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Speakers') }}
 							.col-md-9.data-value
 								span(v-for="speaker, index of editorSession.speakers")
@@ -70,7 +70,7 @@
 								.i18n-form-group
 									template(v-for="locale of locales")
 										input(v-model="editorSession.title[locale]", :required="true", :lang="locale", type="text")
-						.data-row(v-if="editorSession.track").form-group.row
+						.data-row(v-if="editorSession.track && !isShiftsMode").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Track') }}
 							.col-md-9.data-value {{ getLocalizedString(editorSession.track.name) }}
 						.data-row(v-if="editorSession.room").form-group.row
@@ -103,7 +103,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, onBeforeMount, nextTic
 import moment, { Moment } from 'moment-timezone'
 import GridSchedule from '~/components/GridSchedule.vue'
 import Session from '~/components/Session.vue'
-import api from '~/api'
+import api, { isShiftsMode as checkShiftsMode } from '~/api'
 import { getLocalizedString } from '~/utils'
 import type { AvailabilityEntry } from '~/schemas';
 
@@ -210,6 +210,8 @@ const since = ref<string | undefined>(undefined)
 const showTimeDensityMenu = ref<boolean>(false)
 const customDropdownRef = ref<HTMLElement | null>(null)
 
+const isShiftsMode = computed(() => checkShiftsMode())
+
 const condensedView = ref<boolean>(localStorage.getItem('schedule-editor-condensed') === '1')
 const timeDensityMinutes = ref<number>(Number(localStorage.getItem('schedule-time-density-minutes') || 30))
 
@@ -232,10 +234,10 @@ function $t(key: string): string {
   return typeof window !== 'undefined' && (window as { $t?: (key: string) => string }).$t?.(key) || key;
 }
 
-const translations = reactive({
-  filterSessions: $t('Filter sessions'),
+const translations = computed(() => ({
+  filterSessions: isShiftsMode.value ? $t('Filter shifts') : $t('Filter sessions'),
   newBreak: $t('New break'),
-})
+}))
 
 function lookupKey(value?: string | number | null): string {
   return value == null ? '' : String(value)
@@ -279,9 +281,11 @@ function resolveSessionSpeakers(speakers?: string[]): Speaker[] {
 const unassignedSortMethods = computed<SortMethod[]>(() => {
   const sortMethods: SortMethod[] = [
     { label: $t('Title'), name: 'title' },
-    { label: $t('Speakers'), name: 'speakers' },
   ]
-  if (schedule.value && schedule.value.tracks.length > 1) {
+  if (!isShiftsMode.value) {
+    sortMethods.push({ label: $t('Speakers'), name: 'speakers' })
+  }
+  if (schedule.value && schedule.value.tracks.length > 1 && !isShiftsMode.value) {
     sortMethods.push({ label: $t('Track'), name: 'track' })
   }
   sortMethods.push({ label: $t('Duration'), name: 'duration' })
@@ -303,6 +307,7 @@ const unscheduled = computed<SessionData[]>(() => {
       duration: session.duration,
       state: session.state,
       do_not_record: session.do_not_record,
+      roles: (session as any).roles || [],
     } as SessionData)
   }
   if (unassignedFilterString.value.length) {
@@ -391,6 +396,7 @@ const sessions = computed<SessionData[]>(() => {
     state: session.state,
     room: roomsLookup.value[lookupKey(session.room)],
     do_not_record: session.do_not_record,
+    roles: (session as any).roles || [],
   }))
 
   sessionList.sort((a, b) => a.start!.diff(b.start!))
@@ -884,7 +890,7 @@ onUnmounted(() => {
 					white-space: nowrap
 		.unassigned-header > .title
 			position: relative
-			padding 4px 0
+			padding: 4px 0
 			font-size: 18px
 			text-align: center
 			background-color: $clr-white
@@ -937,7 +943,7 @@ onUnmounted(() => {
 			cursor: pointer
 			z-index: 1000
 			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5)
-			text-align: left;
+			text-align: left
 			.sort-method
 				padding: 8px 16px
 				display: flex
@@ -973,54 +979,54 @@ onUnmounted(() => {
 	#schedule-wrapper
 		width: 100%
 		margin-right: 40px
-  #session-editor-wrapper
+#session-editor-wrapper
+	position: absolute
+	z-index: 1000
+	top: 0
+	left: 0
+	width: 100%
+	height: 100%
+	background-color: rgba(0, 0, 0, 0.5)
+
+	#session-editor
+		background-color: $clr-white
+		border-radius: 4px
+		padding: 32px 40px
 		position: absolute
-		z-index: 1000
-		top: 0
-		left: 0
-		width: 100%
-		height: 100%
-		background-color: rgba(0, 0, 0, 0.5)
+		top: 50%
+		left: 50%
+		transform: translate(-50%, -50%)
+		width: 680px
 
-		#session-editor
-			background-color: $clr-white
-			border-radius: 4px
-			padding: 32px 40px
-			position: absolute
-			top: 50%
-			left: 50%
-			transform: translate(-50%, -50%)
-			width: 680px
+		.session-editor-title
+			font-size: 22px
+			margin-bottom: 16px
+		.button-row
+			display: flex
+			width: 100%
+			margin-top: 24px
 
-			.session-editor-title
-				font-size: 22px
-				margin-bottom: 16px
-			.button-row
-				display: flex
-				width: 100%
-				margin-top: 24px
-
-				.bunt-button-content
-					font-size: 16px !important
-				#btn-delete
-					button-style(color: $clr-danger, text-color: $clr-white)
-					font-weight: bold;
-				#btn-save
-					margin-left: auto
-					font-weight: bold;
-					button-style(color: #2185d0)
-				[type=submit]
-					display: none
-			.data
-				display: flex
-				flex-direction: column
-				font-size: 16px
-				.data-row
-					.data-value
-						padding-top: 8px
-						ul
-							list-style: none
-							padding: 0
-			.warning
-				color: #b23e65
+			.bunt-button-content
+				font-size: 16px !important
+			#btn-delete
+				button-style(color: $clr-danger, text-color: $clr-white)
+				font-weight: bold
+			#btn-save
+				margin-left: auto
+				font-weight: bold
+				button-style(color: #2185d0)
+			[type="submit"]
+				display: none
+		.data
+			display: flex
+			flex-direction: column
+			font-size: 16px
+			.data-row
+				.data-value
+					padding-top: 8px
+					ul
+						list-style: none
+						padding: 0
+		.warning
+			color: #b23e65
 </style>

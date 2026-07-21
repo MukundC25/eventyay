@@ -7,11 +7,28 @@
 		.duration {{ durationPretty }}
 	.info
 		.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
-		.speakers(v-if="hasSpeakersWithNames", :class="{'speakers-clamped': isShortSession}") {{ speakerNames }}
-		.pending-line(v-if="session.state === 'pending'")
-			i.fa.fa-exclamation-circle
-			span {{ $t('Pending proposal state') }}
-		.bottom-info(v-if="!isBreak && (session.track || session.do_not_record)")
+		
+		template(v-if="isShiftsMode")
+			.roles-list(v-if="session.roles && session.roles.length")
+				.role-item(v-for="role in session.roles", :key="role.id")
+					.role-header
+						span.role-name {{ getLocalizedString(role.name) }}
+						span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} filled
+					.role-assignees
+						span(v-for="(user, i) in role.assigned")
+							i.fa.fa-user.mr-1
+							| {{ user.name }}{{ i < role.assigned.length - 1 ? ', ' : '' }}
+						span.text-muted(v-if="!role.assigned.length") {{ $t('None') }}
+			
+			.shift-manage.mt-2.text-right(v-if="!isBreak")
+				a.btn.btn-sm.btn-outline-primary(@click.prevent="") {{ $t('Manage') }} &gt;
+		
+		template(v-else)
+			.speakers(v-if="hasSpeakersWithNames", :class="{'speakers-clamped': isShortSession}") {{ speakerNames }}
+			.pending-line(v-if="session.state === 'pending'")
+				i.fa.fa-exclamation-circle
+				span {{ $t('Pending proposal state') }}
+			.bottom-info(v-if="!isBreak && (session.track || session.do_not_record)")
 			.track(v-if="session.track") {{ getLocalizedString(session.track.name) }}
 			.do_not_record.no-print(v-if="session.do_not_record", :title="$t('This session will not be recorded.')", :aria-label="$t('This session will not be recorded.')")
 				svg(viewBox="0 0 116.59076 116.59076", width="24px", height="24px", fill="none", xmlns="http://www.w3.org/2000/svg", aria-hidden="true")
@@ -29,6 +46,7 @@
 import { computed } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import { getLocalizedString } from '~/utils'
+import { isShiftsMode as checkShiftsMode } from '~/api'
 
 interface Speaker {
   name: string
@@ -56,7 +74,8 @@ interface Session {
   abstract?: string
   room?: string | number
   do_not_record?: boolean
-  [key: string]: string | number | boolean | Record<string, string> | Speaker[] | Track | Moment | null | undefined
+  roles?: any[]
+  [key: string]: any
 }
 
 interface Warning {
@@ -78,7 +97,13 @@ const emit = defineEmits<{
 }>()
 const isBreak = computed(() => props.session.code == null)
 
+const isShiftsMode = computed(() => checkShiftsMode())
 
+const getCapacityClass = (role: any) => {
+  if (role.assigned.length >= role.capacity) return 'badge-full'
+  if (role.assigned.length === 0) return 'badge-empty'
+  return 'badge-partial'
+}
 const hasSpeakersWithNames = computed(() => {
   return props.session.speakers && props.session.speakers.some(speaker => speaker.name)
 })
@@ -318,16 +343,18 @@ sessionTextExpand()
 		position: absolute
 		top: 0
 		right: 0
-		padding: 4px 4px
+		padding: 4px
 		margin: 4px
 		color: #b23e65
 		font-size: 16px
 		.warning-icon span
 			padding-right: 4px
+
 	@media (hover: hover) and (pointer: fine)
-		&:hover:not(.dragging):not(.clone)
+		&:hover:not(.dragging, .clone)
 			.title.title-clamped, .speakers.speakers-clamped
 				sessionTextExpand()
+
 @media print
 	.c-linear-schedule-session.isbreak
 		border: 2px solid $clr-grey-300 !important
@@ -337,4 +364,44 @@ sessionTextExpand()
 		border-right: 2px solid var(--track-color) !important
 		border-top: 2px solid var(--track-color) !important
 		border-bottom: 2px solid var(--track-color) !important
+
+	.roles-list
+		display: flex
+		flex-direction: column
+		gap: 6px
+		margin-top: 6px
+		.role-item
+			border-top: 1px solid $clr-dividers-light
+			padding-top: 6px
+			.role-header
+				display: flex
+				justify-content: space-between
+				align-items: center
+				font-size: 13px
+				font-weight: 600
+				.role-badge
+					font-size: 11px
+					padding: 2px 6px
+					border-radius: 12px
+					border: 1px solid
+					&.badge-full
+						border-color: #28a745
+						color: #28a745
+					&.badge-empty
+						border-color: #dc3545
+						color: #dc3545
+					&.badge-partial
+						border-color: #ffc107
+						color: #ffc107
+			.role-assignees
+				font-size: 12px
+				color: $clr-secondary-text-light
+				margin-top: 2px
+				i.fa
+					font-size: 10px
+	.shift-manage
+		font-size: 12px
+		.btn
+			padding: 2px 8px
+			font-size: 12px
 </style>

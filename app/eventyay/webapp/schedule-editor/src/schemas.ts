@@ -60,6 +60,16 @@ const AvailabilityEntrySchema = z.object({
   end: z.string()
 });
 
+const RoleAssignmentSchema = z.object({
+  id: z.number(),
+  name: LocalizedTextSchema,
+  capacity: z.number(),
+  assigned: z.array(z.object({
+    name: z.string(),
+    email: z.string()
+  })).default([])
+});
+
 export const TalkSchema = z.object({
   id: z.number(),
   code: z.string().optional(),
@@ -88,6 +98,7 @@ export const TalkSchema = z.object({
   availabilities: z.array(AvailabilityEntrySchema).optional().default([]),
   duration: z.number().optional(),
   do_not_record: z.union([z.boolean(), z.null()]).optional().transform(val => val === true).default(false),
+  roles: z.array(RoleAssignmentSchema).optional().default([]),
 });
 
 export const WarningSchema = z.object({

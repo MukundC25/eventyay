@@ -14,11 +14,20 @@ const basePath = process.env.BASE_PATH || '';
 
 function getOrgaEventBase() {
   if (typeof window === 'undefined') return '';
-  const match = window.location.pathname.match(/\/orga\/event\/([^/]+)\/([^/]+)/);
+  const appElement = document.querySelector('#app') as HTMLElement;
+  const isShiftsMode = appElement?.dataset.mode === 'shifts';
+  const modePrefix = isShiftsMode ? '/teamshifts' : '/orga';
+  const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
   if (!match) {
-    throw new Error('Schedule editor must be loaded under /orga/event/<organizer>/<event>/');
+    throw new Error(`Schedule editor must be loaded under ${modePrefix}/event/<organizer>/<event>/`);
   }
-  return `${basePath}/orga/event/${match[1]}/${match[2]}`;
+  return `${basePath}${modePrefix}/event/${match[1]}/${match[2]}`;
+}
+
+export function isShiftsMode(): boolean {
+  if (typeof document === 'undefined') return false;
+  const appElement = document.querySelector('#app') as HTMLElement;
+  return appElement?.dataset.mode === 'shifts';
 }
 
 const calculateDuration = (start?: string, end?: string): number | undefined => {
@@ -50,13 +59,13 @@ const api = {
   getOrgaEventBase,
   get organizerSlug() {
     if (typeof window === 'undefined') return null;
-    const match = window.location.pathname.match(/\/orga\/event\/([^/]+)\/([^/]+)/);
+    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
     return match ? match[1] : null;
   },
   
   get eventSlug() {
     if (typeof window === 'undefined') return null;
-    const match = window.location.pathname.match(/\/orga\/event\/([^/]+)\/([^/]+)/);
+    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
     return match ? match[2] : null;
   },
   
@@ -87,7 +96,8 @@ const api = {
   },
 
   async fetchTalks(options?: { since?: string; warnings?: boolean }): Promise<Schedule> {
-    let url = `${getOrgaEventBase()}/schedule/api/talks/`;
+    const endpoint = isShiftsMode() ? '/schedule/api/shifts/' : '/schedule/api/talks/';
+    let url = `${getOrgaEventBase()}${endpoint}`;
     const params = new URLSearchParams(window.location.search);
     if (options?.since) params.append('since', options.since);
     if (options?.warnings) params.append('warnings', 'true');
@@ -113,7 +123,8 @@ const api = {
   },
 
   async saveTalk(talk: TalkPayload,{ action = 'PATCH' }: { action?: string } = {}): Promise<Talk | void> {
-    const talksBase = `${getOrgaEventBase()}/schedule/api/talks/`;
+    const endpoint = isShiftsMode() ? '/schedule/api/shifts/' : '/schedule/api/talks/';
+    const talksBase = `${getOrgaEventBase()}${endpoint}`;
     const urlPath = talk.id ? `${talksBase}${talk.id}/` : talksBase;
     const params = new URLSearchParams(window.location.search);
     const url = params.toString() ? `${urlPath}?${params.toString()}` : urlPath;
