@@ -118,7 +118,11 @@ export const ScheduleSchema = z.object({
   speakers: z.array(SpeakerSchema).default([]),
   talks: z.array(TalkSchema).default([]),
   now: z.string().optional(),
-  warnings: WarningRecordSchema.optional().default({})
+  warnings: WarningRecordSchema.optional().default({}),
+  roles: z.array(z.object({
+    id: z.number(),
+    name: LocalizedTextSchema
+  })).default([])
 });
 
 export const AvailabilitySchema = z.object({

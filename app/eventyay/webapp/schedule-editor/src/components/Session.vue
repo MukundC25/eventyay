@@ -6,7 +6,11 @@
 			.ampm(v-if="startTime.ampm") {{ startTime.ampm }}
 		.duration {{ durationPretty }}
 	.info
-		.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
+		.title-row(style="display: flex; justify-content: space-between; align-items: flex-start;")
+			.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
+			.card-actions(v-if="isShiftsMode && !isBreak")
+				i.fa.fa-pencil.mr-2(style="cursor: pointer", @click.stop="$emit('editSession', session)", :title="$t('Edit')")
+				i.fa.fa-trash.text-danger(style="cursor: pointer", @click.stop="$emit('deleteSession', session)", :title="$t('Delete')")
 		
 		template(v-if="isShiftsMode")
 			.roles-list(v-if="session.roles && session.roles.length")
@@ -21,7 +25,7 @@
 						span.text-muted(v-if="!role.assigned.length") {{ $t('None') }}
 			
 			.shift-manage.mt-2.text-right(v-if="!isBreak")
-				a.btn.btn-sm.btn-outline-primary(@click.prevent="") {{ $t('Manage') }} &gt;
+				a.btn.btn-sm.btn-outline-primary(href="#", @click.prevent="$emit('assignMembers', session)") {{ session.roles?.some(r => r.assigned.length < r.capacity) ? $t('Assign Members') : $t('Manage') }}
 		
 		template(v-else)
 			.speakers(v-if="hasSpeakersWithNames", :class="{'speakers-clamped': isShortSession}") {{ speakerNames }}
@@ -94,6 +98,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'startDragging', payload: { session: Session; event: PointerEvent }): void
+  (e: 'editSession', payload: Session): void
+  (e: 'deleteSession', payload: Session): void
+  (e: 'assignMembers', payload: Session): void
 }>()
 const isBreak = computed(() => props.session.code == null)
 

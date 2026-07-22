@@ -22,6 +22,9 @@
 				:style="getSessionStyle(session)",
 				:showRoom="false",
 				@startDragging="startDragging($event)",
+				@editSession="emit('editSession', $event)",
+				@deleteSession="emit('deleteSession', $event)",
+				@assignMembers="emit('assignMembers', $event)",
 			)
 		.availability(v-for="availability of visibleAvailabilities", :key="`${availability.room.id}-${availability.start.valueOf()}-${availability.end.valueOf()}`", :style="getSessionStyle(availability)", :class="availability.active ? ['active'] : []")
 	#hidden-rooms.no-print(v-if="hiddenRooms.length")
@@ -123,6 +126,8 @@ const props = defineProps<{
 const emit = defineEmits([
   'startDragging',
   'editSession',
+  'deleteSession',
+  'assignMembers',
   'createSession',
   'rescheduleSession',
   'changeDay'

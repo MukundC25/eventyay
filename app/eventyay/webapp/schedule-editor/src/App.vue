@@ -82,6 +82,17 @@
 								input(v-model="editorSession.duration", type="number", min="1", max="1440", step="1", :required="true")
 								.input-group-append
 									span.input-group-text {{ $t('minutes') }}
+						.data-row(v-if="isShiftsMode").form-group.row
+							label.data-label.col-form-label.col-md-3 {{ $t('Role') }}
+							.col-md-9
+								select.form-control(v-model="editorSession.role", required)
+									option(:value="undefined" disabled) {{ $t('Select a role') }}
+									option(v-for="role in schedule?.roles", :key="role.id", :value="role.id") {{ getLocalizedString(role.name) }}
+						.data-row(v-if="isShiftsMode").form-group.row
+							label.data-label.col-form-label.col-md-3 {{ $t('Capacity Required') }}
+							.col-md-9
+								input.form-control(v-model.number="editorSession.capacity", type="number", min="1", required)
+
 
 						.data-row(v-if="editorSession.code && warnings[editorSession.code] && warnings[editorSession.code].length").form-group.row
 							label.data-label.col-form-label.col-md-3
@@ -93,8 +104,36 @@
 								span(v-else) {{ warnings[editorSession.code][0].message }}
 					.button-row
 						input(type="submit")
-						bunt-button#btn-delete(v-if="!editorSession.code", @click="editorDelete", :loading="editorSessionWaiting") {{ $t('Delete') }}
+						bunt-button#btn-delete(v-if="editorSession.id", @click="editorDelete", :loading="editorSessionWaiting") {{ $t('Delete') }}
 						bunt-button#btn-save(@click="editorSave", :loading="editorSessionWaiting") {{ $t('Save') }}
+			
+			#assign-modal-wrapper(v-if="assigningSession", @click="closeAssignModal")
+				.assign-modal(@click.stop="")
+					h3.session-editor-title
+						span {{ $t('Assign Volunteers for ') }} {{ getLocalizedString(assigningSession.title) }}
+					
+					.data.px-4.py-3
+						template(v-for="role in assigningSession.roles", :key="role.id")
+							h4 {{ getLocalizedString(role.name) }} ({{ role.assigned.length }}/{{ role.capacity }} {{ $t('assigned') }})
+							
+							.assigned-list.mb-3
+								span.badge.badge-primary.mr-2.mb-2.p-2(v-for="user in role.assigned", :key="user.id", style="font-size: 14px")
+									| {{ user.name }}
+									i.fa.fa-times.ml-2.text-danger(style="cursor: pointer", @click="unassignVolunteer(role.id, user.id)")
+								p.text-muted(v-if="!role.assigned.length") {{ $t('No volunteers assigned yet.') }}
+							
+							.assign-new.mt-3
+								.form-group.row
+									.col-md-8
+										select.form-control(v-model="selectedVolunteerId")
+											option(:value="undefined" disabled) {{ $t('Select a volunteer to assign') }}
+											option(v-for="vol in availableVolunteers", :key="vol.id", :value="vol.id") {{ vol.name }} ({{ vol.email }})
+									.col-md-4
+										bunt-button(@click="assignVolunteer(role.id)", :loading="assigningWaiting") {{ $t('Assign') }}
+					
+					.button-row
+						bunt-button(@click="closeAssignModal") {{ $t('Close') }}
+
 	bunt-progress-circular(v-else, size="huge", :page="true")
 </template>
 
@@ -143,6 +182,9 @@ interface Talk {
   uncreated?: boolean
   availabilities?: AvailabilityEntry[]
   do_not_record?: boolean
+  roles?: any[]
+  role?: string | number
+  capacity?: number
 }
 
 interface SessionData {
@@ -161,6 +203,9 @@ interface SessionData {
   uncreated?: boolean
   availabilities?: AvailabilityEntry[]
   do_not_record?: boolean
+  roles?: any[]
+  role?: string | number
+  capacity?: number
 }
 
 interface SortMethod {
@@ -179,6 +224,7 @@ interface Schedule {
   speakers: Speaker[]
   talks: Talk[]
   now?: string
+  roles?: any[]
 }
 
 const props = defineProps<{
@@ -198,6 +244,10 @@ const currentDay = ref<Moment | null>(null)
 const draggedSession = ref<SessionData | null>(null)
 const editorSession = ref<SessionData | null>(null)
 const editorSessionWaiting = ref<boolean>(false)
+const assigningSession = ref<SessionData | null>(null)
+const assigningWaiting = ref<boolean>(false)
+const availableVolunteers = ref<any[]>([])
+const selectedVolunteerId = ref<number | undefined>(undefined)
 const isUnassigning = ref<boolean>(false)
 const locales = ref<string[]>(['en'])
 const unassignedFilterString = ref<string>('')
@@ -527,7 +577,12 @@ async function createSession(e: CreateSessionEvent): Promise<void> {
 }
 
 function editorStart(session: SessionData | Talk): void {
-  editorSession.value = { ...session } as SessionData
+  const newEditorSession = { ...session } as SessionData
+  if (isShiftsMode.value && newEditorSession.roles && newEditorSession.roles.length > 0) {
+    newEditorSession.role = newEditorSession.roles[0].id
+    newEditorSession.capacity = newEditorSession.roles[0].capacity
+  }
+  editorSession.value = newEditorSession
 }
 
 async function editorSave(): Promise<void> {
@@ -556,6 +611,11 @@ async function editorSave(): Promise<void> {
     abstract: editorSession.value.abstract,
     state: editorSession.value.state
   }
+
+  if (isShiftsMode.value) {
+    talk.role = editorSession.value.role
+    talk.capacity = editorSession.value.capacity
+  }
   
   await saveTalk(talk)
 
@@ -573,14 +633,84 @@ async function editorSave(): Promise<void> {
 
 async function editorDelete(): Promise<void> {
   if (!editorSession.value) return
+  if (!window.confirm($t('Are you sure you want to delete this session?'))) return
+  
   editorSessionWaiting.value = true
-  await api.deleteTalk({ id: String(editorSession.value.id) } as any)
+  await api.deleteTalk({ id: editorSession.value.id } as any)
   if (schedule.value) {
     schedule.value.talks = schedule.value.talks.filter((s) => s.id !== editorSession.value?.id)
   }
   editorSessionWaiting.value = false
   editorSession.value = null
   await fetchAdditionalScheduleData()
+}
+
+async function openAssignModal(session: SessionData | Talk): Promise<void> {
+  assigningSession.value = { ...session } as SessionData
+  if (assigningSession.value.roles && assigningSession.value.roles.length > 0) {
+    const roleId = assigningSession.value.roles[0].id
+    await loadVolunteers(roleId)
+  }
+}
+
+function closeAssignModal(): void {
+  assigningSession.value = null
+  selectedVolunteerId.value = undefined
+  availableVolunteers.value = []
+}
+
+async function loadVolunteers(roleId: number): Promise<void> {
+  try {
+    const response = await api.fetchVolunteers(roleId)
+    availableVolunteers.value = response.volunteers || []
+  } catch (error) {
+    console.error('Failed to load volunteers', error)
+  }
+}
+
+async function assignVolunteer(roleId: number): Promise<void> {
+  if (!assigningSession.value || !selectedVolunteerId.value) return
+  assigningWaiting.value = true
+  try {
+    await api.assignVolunteer(Number(assigningSession.value.id), roleId, selectedVolunteerId.value)
+    
+    // Refresh schedule data and update assigningSession
+    const sched = await fetchSchedule({ warnings: true })
+    if (schedule.value) {
+      schedule.value.talks = sched.talks
+      const updatedSession = sched.talks.find(t => t.id === assigningSession.value?.id)
+      if (updatedSession) {
+        assigningSession.value = { ...updatedSession } as SessionData
+      }
+    }
+    selectedVolunteerId.value = undefined
+  } catch (error) {
+    console.error('Failed to assign volunteer', error)
+  }
+  assigningWaiting.value = false
+}
+
+async function unassignVolunteer(roleId: number, userId: number): Promise<void> {
+  if (!assigningSession.value) return
+  if (!window.confirm($t('Are you sure you want to unassign this volunteer?'))) return
+  
+  assigningWaiting.value = true
+  try {
+    await api.unassignVolunteer(Number(assigningSession.value.id), userId)
+    
+    // Refresh schedule data and update assigningSession
+    const sched = await fetchSchedule({ warnings: true })
+    if (schedule.value) {
+      schedule.value.talks = sched.talks
+      const updatedSession = sched.talks.find(t => t.id === assigningSession.value?.id)
+      if (updatedSession) {
+        assigningSession.value = { ...updatedSession } as SessionData
+      }
+    }
+  } catch (error) {
+    console.error('Failed to unassign volunteer', error)
+  }
+  assigningWaiting.value = false
 }
 
 function showNewBreakHint() {
@@ -800,6 +930,52 @@ onUnmounted(() => {
 			padding-bottom: 8px
 			display: flex
 			flex-direction: column
+			
+	#assign-modal-wrapper
+		position: fixed
+		top: 0
+		left: 0
+		right: 0
+		bottom: 0
+		background-color: rgba(0,0,0,0.5)
+		z-index: 2000
+		display: flex
+		align-items: center
+		justify-content: center
+		
+	.assign-modal
+		background-color: $clr-white
+		border-radius: 6px
+		box-shadow: 0 4px 12px rgba(0,0,0,0.2)
+		min-width: 500px
+		max-width: 800px
+		display: flex
+		flex-direction: column
+		max-height: 90vh
+		overflow-y: auto
+		
+		h3
+			margin: 0
+			padding: 16px
+			background-color: var(--color-primary)
+			color: $clr-primary-text-dark
+			border-radius: 6px 6px 0 0
+		
+		.button-row
+			margin-top: auto
+			padding: 16px
+			display: flex
+			justify-content: flex-end
+			gap: 8px
+			border-top: 1px solid $clr-dividers-light
+			background-color: $clr-grey-50
+			border-radius: 0 0 6px 6px
+			
+	#session-editor-wrapper
+		width: 400px
+		flex: none
+		display: flex
+		flex-direction: column
 		.unassigned-header > .density-controls
 			display: flex
 			align-items: center

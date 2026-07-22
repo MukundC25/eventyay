@@ -50,6 +50,8 @@ interface TalkPayload {
   start?: string;
   end?: string;
   duration?: number;
+  role?: string | number;
+  capacity?: number;
 }
 
 // Define specific types for HTTP request bodies
@@ -150,6 +152,11 @@ const api = {
         title: talk.title,
         description: talk.description,
       };
+      
+      if (isShiftsMode()) {
+        payload.role = talk.role;
+        payload.capacity = talk.capacity;
+      }
     }
     
     const response = await this.http<Talk>(action, url, payload);
@@ -169,6 +176,21 @@ const api = {
       throw new Error('Failed to create talk: No response from server');
     }
     return response;
+  },
+
+  async fetchVolunteers(roleId: number): Promise<any> {
+    const url = `${getOrgaEventBase()}/schedule/api/volunteers/?role=${roleId}`;
+    return this.http('GET', url, null);
+  },
+
+  async assignVolunteer(shiftId: number, roleId: number, userId: number): Promise<any> {
+    const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
+    return this.http('POST', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
+  },
+
+  async unassignVolunteer(shiftId: number, userId: number): Promise<any> {
+    const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
+    return this.http('DELETE', url, { shift_id: shiftId, user_id: userId });
   }
 };
 
