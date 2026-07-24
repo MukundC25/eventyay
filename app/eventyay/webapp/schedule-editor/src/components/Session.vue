@@ -362,16 +362,6 @@ sessionTextExpand()
 			.title.title-clamped, .speakers.speakers-clamped
 				sessionTextExpand()
 
-@media print
-	.c-linear-schedule-session.isbreak
-		border: 2px solid $clr-grey-300 !important
-	.c-linear-schedule-session.istalk .time-box
-		border: 2px solid var(--track-color) !important
-	.c-linear-schedule-session.istalk .info
-		border-right: 2px solid var(--track-color) !important
-		border-top: 2px solid var(--track-color) !important
-		border-bottom: 2px solid var(--track-color) !important
-
 	.roles-list
 		display: flex
 		flex-direction: column
@@ -411,4 +401,16 @@ sessionTextExpand()
 		.btn
 			padding: 2px 8px
 			font-size: 12px
+
+@media print
+	.c-linear-schedule-session.isbreak
+		border: 2px solid $clr-grey-300 !important
+	.c-linear-schedule-session.istalk .time-box
+		border: 2px solid var(--track-color) !important
+	.c-linear-schedule-session.istalk .info
+		border-right: 2px solid var(--track-color) !important
+		border-top: 2px solid var(--track-color) !important
+		border-bottom: 2px solid var(--track-color) !important
+
+
 </style>

@@ -49,7 +49,9 @@
 					@startDragging="startDragging",
 					@rescheduleSession="rescheduleSession",
 					@createSession="createSession",
-					@editSession="editorStart($event)")
+					@editSession="editorStart($event)",
+					@deleteSession="deleteSessionDirect($event)",
+					@assignMembers="openAssignModal($event)")
 			#session-editor-wrapper(v-if="editorSession", @click="editorSession = null")
 				form#session-editor(@click.stop="", @submit.prevent="editorSave")
 					h3.session-editor-title(v-if="editorSession.code")
@@ -643,6 +645,11 @@ async function editorDelete(): Promise<void> {
   editorSessionWaiting.value = false
   editorSession.value = null
   await fetchAdditionalScheduleData()
+}
+
+async function deleteSessionDirect(session: SessionData | Talk): Promise<void> {
+  editorSession.value = { ...session } as SessionData
+  await editorDelete()
 }
 
 async function openAssignModal(session: SessionData | Talk): Promise<void> {

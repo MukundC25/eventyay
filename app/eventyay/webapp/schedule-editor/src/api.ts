@@ -15,8 +15,8 @@ const basePath = process.env.BASE_PATH || '';
 function getOrgaEventBase() {
   if (typeof window === 'undefined') return '';
   const appElement = document.querySelector('#app') as HTMLElement;
-  const isShiftsMode = appElement?.dataset.mode === 'shifts';
-  const modePrefix = isShiftsMode ? '/teamshifts' : '/orga';
+  const isShifts = isShiftsMode();
+  const modePrefix = isShifts ? '/teamshifts' : '/orga';
   const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
   if (!match) {
     throw new Error(`Schedule editor must be loaded under ${modePrefix}/event/<organizer>/<event>/`);
@@ -25,9 +25,8 @@ function getOrgaEventBase() {
 }
 
 export function isShiftsMode(): boolean {
-  if (typeof document === 'undefined') return false;
-  const appElement = document.querySelector('#app') as HTMLElement;
-  return appElement?.dataset.mode === 'shifts';
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname.includes('/teamshifts/');
 }
 
 const calculateDuration = (start?: string, end?: string): number | undefined => {
@@ -109,7 +108,13 @@ const api = {
     }
     
     const data = await this.http<Schedule>('GET', url, null);
-    return ScheduleSchema.parse(data);
+    try {
+      return ScheduleSchema.parse(data);
+    } catch (e) {
+      console.error("ZOD PARSE ERROR in fetchTalks", JSON.stringify(e, null, 2));
+      console.error("DATA RECEIVED:", JSON.stringify(data, null, 2));
+      throw e;
+    }
   },
 
   async fetchAvailabilities(): Promise<Availability> {
