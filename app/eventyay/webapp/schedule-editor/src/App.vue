@@ -71,17 +71,17 @@
 							.col-md-9
 								.i18n-form-group
 									template(v-for="locale of locales")
-										input(v-model="editorSession.title[locale]", :required="true", :lang="locale", type="text")
+										input.form-control(v-model="editorSession.title[locale]", :required="true", :lang="locale", type="text")
 						.data-row(v-if="editorSession.track && !isShiftsMode").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Track') }}
 							.col-md-9.data-value {{ getLocalizedString(editorSession.track.name) }}
 						.data-row(v-if="editorSession.room").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Room') }}
 							.col-md-9.data-value {{ getLocalizedString(editorSession.room.name) }}
-						.data-row.form-control.form-group.row
+						.data-row.form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Duration') }}
 							.col-md-9.number.input-group
-								input(v-model="editorSession.duration", type="number", min="1", max="1440", step="1", :required="true")
+								input.form-control(v-model="editorSession.duration", type="number", min="1", max="1440", step="1", :required="true")
 								.input-group-append
 									span.input-group-text {{ $t('minutes') }}
 						.data-row(v-if="isShiftsMode").form-group.row
@@ -110,7 +110,7 @@
 						bunt-button#btn-save(@click="editorSave", :loading="editorSessionWaiting") {{ $t('Save') }}
 			
 			#assign-modal-wrapper(v-if="assigningSession", @click="closeAssignModal")
-				.assign-modal(@click.stop="")
+				#session-editor(@click.stop="")
 					h3.session-editor-title
 						span {{ $t('Assign Volunteers for ') }} {{ getLocalizedString(assigningSession.title) }}
 					
@@ -603,8 +603,8 @@ async function editorSave(): Promise<void> {
       ? { en: editorSession.value.title } 
       : editorSession.value.title,
     duration: editorSession.value.duration ?? 0,
-    start: editorSession.value.start?.toISOString(),
-    end: editorSession.value.end?.toISOString(),
+    start: typeof editorSession.value.start === 'string' ? editorSession.value.start : editorSession.value.start?.toISOString(),
+    end: typeof editorSession.value.end === 'string' ? editorSession.value.end : editorSession.value.end?.toISOString(),
     room: editorSession.value.room?.id,
     speakers: editorSession.value.speakers?.map(s => 
       typeof s === 'string' ? s : s.name
@@ -623,7 +623,7 @@ async function editorSave(): Promise<void> {
 
   const sessionInSchedule = schedule.value?.talks.find((s) => s.id === editorSession.value?.id)
   if (sessionInSchedule && editorSession.value) {
-    sessionInSchedule.end = editorSession.value.end?.toISOString()
+    sessionInSchedule.end = typeof editorSession.value.end === 'string' ? editorSession.value.end : editorSession.value.end?.toISOString()
     if (!('submission' in sessionInSchedule)) {
       sessionInSchedule.title = editorSession.value.title as Record<string, string>
     }
@@ -938,51 +938,7 @@ onUnmounted(() => {
 			display: flex
 			flex-direction: column
 			
-	#assign-modal-wrapper
-		position: fixed
-		top: 0
-		left: 0
-		right: 0
-		bottom: 0
-		background-color: rgba(0,0,0,0.5)
-		z-index: 2000
-		display: flex
-		align-items: center
-		justify-content: center
-		
-	.assign-modal
-		background-color: $clr-white
-		border-radius: 6px
-		box-shadow: 0 4px 12px rgba(0,0,0,0.2)
-		min-width: 500px
-		max-width: 800px
-		display: flex
-		flex-direction: column
-		max-height: 90vh
-		overflow-y: auto
-		
-		h3
-			margin: 0
-			padding: 16px
-			background-color: var(--color-primary)
-			color: $clr-primary-text-dark
-			border-radius: 6px 6px 0 0
-		
-		.button-row
-			margin-top: auto
-			padding: 16px
-			display: flex
-			justify-content: flex-end
-			gap: 8px
-			border-top: 1px solid $clr-dividers-light
-			background-color: $clr-grey-50
-			border-radius: 0 0 6px 6px
-			
-	#session-editor-wrapper
-		width: 400px
-		flex: none
-		display: flex
-		flex-direction: column
+
 		.unassigned-header > .density-controls
 			display: flex
 			align-items: center
@@ -1162,8 +1118,8 @@ onUnmounted(() => {
 	#schedule-wrapper
 		width: 100%
 		margin-right: 40px
-#session-editor-wrapper
-	position: absolute
+#session-editor-wrapper, #assign-modal-wrapper
+	position: fixed
 	z-index: 1000
 	top: 0
 	left: 0

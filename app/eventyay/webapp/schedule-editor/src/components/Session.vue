@@ -25,7 +25,7 @@
 						span.text-muted(v-if="!role.assigned.length") {{ $t('None') }}
 			
 			.shift-manage.mt-2.text-right(v-if="!isBreak")
-				a.btn.btn-sm.btn-outline-primary(href="#", @click.prevent="$emit('assignMembers', session)") {{ session.roles?.some(r => r.assigned.length < r.capacity) ? $t('Assign Members') : $t('Manage') }}
+				a.btn.btn-sm.btn-outline-primary(href="#", @pointerdown.stop="", @click.prevent.stop="$emit('assignMembers', session)") {{ session.roles?.some(r => r.assigned.length < r.capacity) ? $t('Assign Members') : $t('Manage') }}
 		
 		template(v-else)
 			.speakers(v-if="hasSpeakersWithNames", :class="{'speakers-clamped': isShortSession}") {{ speakerNames }}
