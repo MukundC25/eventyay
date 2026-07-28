@@ -153,9 +153,31 @@ const classes = computed(() => {
 })
 
 
-const style = computed(() => ({
-  '--track-color': props.session.track?.color || 'var(--color-primary)'
-}))
+const style = computed(() => {
+  let trackColor = props.session.track?.color || 'var(--color-primary)'
+  
+  if (isShiftsMode.value && props.session.roles && props.session.roles.length > 0) {
+    let totalCapacity = 0
+    let totalAssigned = 0
+    for (const role of props.session.roles) {
+      totalCapacity += role.capacity
+      totalAssigned += role.assigned?.length || 0
+    }
+    if (totalCapacity > 0) {
+      if (totalAssigned >= totalCapacity) {
+        trackColor = '#28a745'
+      } else if (totalAssigned === 0) {
+        trackColor = '#dc3545'
+      } else {
+        trackColor = '#ffc107'
+      }
+    }
+  }
+
+  return {
+    '--track-color': trackColor
+  }
+})
 
 const startTime = computed< { time: string; ampm?: string } | undefined>(() => {
   const time: Moment | undefined = props.overrideStart || props.session.start
