@@ -186,17 +186,17 @@ const api = {
     return response;
   },
 
-  async fetchVolunteers(roleId: number): Promise<any> {
-    const url = `${getOrgaEventBase()}/schedule/api/volunteers/?role=${roleId}`;
+  async fetchMembers(roleId: number): Promise<any> {
+    const url = `${getOrgaEventBase()}/schedule/api/members/?role=${roleId}`;
     return this.http('GET', url, null);
   },
 
-  async assignVolunteer(shiftId: number, roleId: number, userId: number): Promise<any> {
+  async assignMember(shiftId: number, roleId: number, userId: number): Promise<any> {
     const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
     return this.http('POST', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
   },
 
-  async unassignVolunteer(shiftId: number, userId: number): Promise<any> {
+  async unassignMember(shiftId: number, userId: number): Promise<any> {
     const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
     return this.http('DELETE', url, { shift_id: shiftId, user_id: userId });
   }

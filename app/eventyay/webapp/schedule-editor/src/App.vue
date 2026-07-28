@@ -112,7 +112,7 @@
 			#assign-modal-wrapper(v-if="assigningSession", @click="closeAssignModal")
 				#session-editor(@click.stop="")
 					h3.session-editor-title
-						span {{ $t('Assign Volunteers for ') }} {{ getLocalizedString(assigningSession.title) }}
+						span {{ $t('Assign Members for ') }} {{ getLocalizedString(assigningSession.title) }}
 					
 					.data.px-4.py-3
 						template(v-for="role in assigningSession.roles", :key="role.id")
@@ -121,17 +121,17 @@
 							.assigned-list.mb-3
 								span.badge.badge-primary.mr-2.mb-2.p-2(v-for="user in role.assigned", :key="user.id", style="font-size: 14px")
 									| {{ user.name }}
-									i.fa.fa-times.ml-2.text-danger(style="cursor: pointer", @click="unassignVolunteer(role.id, user.id)")
-								p.text-muted(v-if="!role.assigned.length") {{ $t('No volunteers assigned yet.') }}
+									i.fa.fa-times.ml-2.text-danger(style="cursor: pointer", @click="unassignMember(role.id, user.id)")
+								p.text-muted(v-if="!role.assigned.length") {{ $t('No members assigned yet.') }}
 							
 							.assign-new.mt-3
 								.form-group.row
 									.col-md-8
-										select.form-control(v-model="selectedVolunteerId")
-											option(:value="undefined" disabled) {{ $t('Select a volunteer to assign') }}
-											option(v-for="vol in availableVolunteers", :key="vol.id", :value="vol.id") {{ vol.name }} ({{ vol.email }})
+										select.form-control(v-model="selectedMemberId")
+											option(:value="undefined" disabled) {{ $t('Select a member to assign') }}
+											option(v-for="vol in availableMembers", :key="vol.id", :value="vol.id") {{ vol.name }} ({{ vol.email }})
 									.col-md-4
-										bunt-button(@click="assignVolunteer(role.id)", :loading="assigningWaiting") {{ $t('Assign') }}
+										bunt-button(@click="assignMember(role.id)", :loading="assigningWaiting") {{ $t('Assign') }}
 					
 					.button-row
 						bunt-button(@click="closeAssignModal") {{ $t('Close') }}
@@ -248,8 +248,8 @@ const editorSession = ref<SessionData | null>(null)
 const editorSessionWaiting = ref<boolean>(false)
 const assigningSession = ref<SessionData | null>(null)
 const assigningWaiting = ref<boolean>(false)
-const availableVolunteers = ref<any[]>([])
-const selectedVolunteerId = ref<number | undefined>(undefined)
+const availableMembers = ref<any[]>([])
+const selectedMemberId = ref<number | undefined>(undefined)
 const isUnassigning = ref<boolean>(false)
 const locales = ref<string[]>(['en'])
 const unassignedFilterString = ref<string>('')
@@ -656,30 +656,31 @@ async function openAssignModal(session: SessionData | Talk): Promise<void> {
   assigningSession.value = { ...session } as SessionData
   if (assigningSession.value.roles && assigningSession.value.roles.length > 0) {
     const roleId = assigningSession.value.roles[0].id
-    await loadVolunteers(roleId)
+    await loadMembers(roleId)
   }
 }
 
 function closeAssignModal(): void {
   assigningSession.value = null
-  selectedVolunteerId.value = undefined
-  availableVolunteers.value = []
+  selectedMemberId.value = undefined
+  availableMembers.value = []
 }
 
-async function loadVolunteers(roleId: number): Promise<void> {
+async function loadMembers(roleId: number): Promise<void> {
   try {
-    const response = await api.fetchVolunteers(roleId)
-    availableVolunteers.value = response.volunteers || []
+    const response = await api.fetchMembers(roleId)
+    availableMembers.value = response.members || []
   } catch (error) {
-    console.error('Failed to load volunteers', error)
+    console.error('Failed to load members', error)
   }
 }
 
-async function assignVolunteer(roleId: number): Promise<void> {
-  if (!assigningSession.value || !selectedVolunteerId.value) return
+async function assignMember(roleId: number): Promise<void> {
+  if (!assigningSession.value || !selectedMemberId.value) return
+  
   assigningWaiting.value = true
   try {
-    await api.assignVolunteer(Number(assigningSession.value.id), roleId, selectedVolunteerId.value)
+    await api.assignMember(Number(assigningSession.value.id), roleId, selectedMemberId.value)
     
     // Refresh schedule data and update assigningSession
     const sched = await fetchSchedule({ warnings: true })
@@ -690,20 +691,21 @@ async function assignVolunteer(roleId: number): Promise<void> {
         assigningSession.value = { ...updatedSession } as SessionData
       }
     }
-    selectedVolunteerId.value = undefined
+    await loadMembers(roleId)
+    selectedMemberId.value = undefined
   } catch (error) {
-    console.error('Failed to assign volunteer', error)
+    console.error('Failed to assign member', error)
   }
   assigningWaiting.value = false
 }
 
-async function unassignVolunteer(roleId: number, userId: number): Promise<void> {
+async function unassignMember(roleId: number, userId: number): Promise<void> {
   if (!assigningSession.value) return
-  if (!window.confirm($t('Are you sure you want to unassign this volunteer?'))) return
+  if (!window.confirm($t('Are you sure you want to unassign this member?'))) return
   
   assigningWaiting.value = true
   try {
-    await api.unassignVolunteer(Number(assigningSession.value.id), userId)
+    await api.unassignMember(Number(assigningSession.value.id), userId)
     
     // Refresh schedule data and update assigningSession
     const sched = await fetchSchedule({ warnings: true })
@@ -715,7 +717,7 @@ async function unassignVolunteer(roleId: number, userId: number): Promise<void> 
       }
     }
   } catch (error) {
-    console.error('Failed to unassign volunteer', error)
+    console.error('Failed to unassign member', error)
   }
   assigningWaiting.value = false
 }
