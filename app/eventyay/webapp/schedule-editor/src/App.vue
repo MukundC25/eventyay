@@ -645,16 +645,18 @@ async function editorSave(): Promise<void> {
 
 async function editorDelete(): Promise<void> {
   if (!editorSession.value) return
-  await deleteSessionById(editorSession.value.id)
-  editorSession.value = null
+  const deleted = await deleteSessionById(editorSession.value.id)
+  if (deleted) {
+    editorSession.value = null
+  }
 }
 
 async function deleteSessionDirect(session: SessionData | Talk): Promise<void> {
   await deleteSessionById(session.id)
 }
 
-async function deleteSessionById(id: number): Promise<void> {
-  if (!window.confirm($t('Are you sure you want to delete this session?'))) return
+async function deleteSessionById(id: number): Promise<boolean> {
+  if (!window.confirm($t('Are you sure you want to delete this session?'))) return false
 
   editorSessionWaiting.value = true
   try {
@@ -663,6 +665,7 @@ async function deleteSessionById(id: number): Promise<void> {
       schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
     }
     await fetchAdditionalScheduleData()
+    return true
   } finally {
     editorSessionWaiting.value = false
   }
