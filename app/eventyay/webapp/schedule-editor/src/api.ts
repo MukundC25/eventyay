@@ -14,7 +14,6 @@ const basePath = process.env.BASE_PATH || '';
 
 function getOrgaEventBase() {
   if (typeof window === 'undefined') return '';
-  const appElement = document.querySelector('#app') as HTMLElement;
   const isShifts = isShiftsMode();
   const modePrefix = isShifts ? '/teamshifts' : '/orga';
   const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
@@ -109,13 +108,7 @@ const api = {
     }
     
     const data = await this.http<Schedule>('GET', url, null);
-    try {
-      return ScheduleSchema.parse(data);
-    } catch (e) {
-      console.error("ZOD PARSE ERROR in fetchTalks", JSON.stringify(e, null, 2));
-      console.error("DATA RECEIVED:", JSON.stringify(data, null, 2));
-      throw e;
-    }
+    return ScheduleSchema.parse(data);
   },
 
   async fetchAvailabilities(): Promise<Availability> {
@@ -197,8 +190,8 @@ const api = {
   },
 
   async unassignMember(shiftId: number, roleId: number, userId: number): Promise<any> {
-    const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
-    return this.http('DELETE', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
+    const url = `${getOrgaEventBase()}/schedule/api/assignments/?shift_id=${shiftId}&role_id=${roleId}&user_id=${userId}`;
+    return this.http('DELETE', url, null);
   },
 };
 

@@ -9,15 +9,17 @@
 		.title-row(style="display: flex; justify-content: space-between; align-items: flex-start;")
 			.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
 			.card-actions(v-if="isShiftsMode && !isBreak")
-				i.fa.fa-pencil.mr-2(style="cursor: pointer", @click.stop="$emit('editSession', session)", :title="$t('Edit')")
-				i.fa.fa-trash.text-danger(style="cursor: pointer", @click.stop="$emit('deleteSession', session)", :title="$t('Delete')")
+				button.btn.btn-link.p-0.mr-2(type="button", @pointerdown.stop, @click.stop="$emit('editSession', session)", :aria-label="$t('Edit')", :title="$t('Edit')")
+					i.fa.fa-pencil(aria-hidden="true")
+				button.btn.btn-link.p-0.text-danger(type="button", @pointerdown.stop, @click.stop="$emit('deleteSession', session)", :aria-label="$t('Delete')", :title="$t('Delete')")
+					i.fa.fa-trash(aria-hidden="true")
 		
 		template(v-if="isShiftsMode")
 			.roles-list(v-if="session.roles && session.roles.length")
 				.role-item(v-for="role in session.roles", :key="role.id")
 					.role-header
 						span.role-name {{ getLocalizedString(role.name) }}
-						span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} assigned
+						span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} {{ $t('assigned') }}
 					.role-assignees
 						span(v-for="(user, i) in role.assigned")
 							i.fa.fa-user.mr-1
@@ -25,7 +27,7 @@
 						span.text-muted(v-if="!role.assigned.length") {{ $t('None') }}
 			
 			.shift-manage.mt-2.text-right(v-if="!isBreak")
-				a.btn.btn-sm.btn-outline-primary(href="#", @pointerdown.stop="", @click.prevent.stop="$emit('assignMembers', session)") {{ session.roles?.some(r => r.assigned.length < r.capacity) ? $t('Assign Members') : $t('Manage') }}
+				button.btn.btn-sm.btn-outline-primary(type="button", @pointerdown.stop, @click.stop="$emit('assignMembers', session)") {{ session.roles?.some(r => r.assigned.length < r.capacity) ? $t('Assign Members') : $t('Manage') }}
 		
 		template(v-else)
 			.speakers(v-if="hasSpeakersWithNames", :class="{'speakers-clamped': isShortSession}") {{ speakerNames }}
@@ -33,13 +35,13 @@
 				i.fa.fa-exclamation-circle
 				span {{ $t('Pending proposal state') }}
 			.bottom-info(v-if="!isBreak && (session.track || session.do_not_record)")
-			.track(v-if="session.track") {{ getLocalizedString(session.track.name) }}
-			.do_not_record.no-print(v-if="session.do_not_record", :title="$t('This session will not be recorded.')", :aria-label="$t('This session will not be recorded.')")
-				svg(viewBox="0 0 116.59076 116.59076", width="24px", height="24px", fill="none", xmlns="http://www.w3.org/2000/svg", aria-hidden="true")
-					g(transform="translate(-9.3465481,-5.441411)")
-						rect(style="fill:#000000;fill-opacity;stroke:none;stroke-width:11.2589;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", width="52.753284", height="39.619537", x="35.496307", y="43.927021", rx="5.5179553", ry="7.573648")
-						path(style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:18.7997;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="M 99.787546,47.04792 V 80.425654 L 77.727407,63.736793 Z")
-						path(style="fill:none;stroke:#b23e65;stroke-width:12;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="m 35.553146,95.825578 64.177559,-64.17757 m 16.294055,32.08879 A 48.382828,48.382828 0 0 1 67.641925,112.11961 48.382828,48.382828 0 0 1 19.259099,63.736798 48.382828,48.382828 0 0 1 67.641925,15.353968 48.382828,48.382828 0 0 1 116.02476,63.736798 Z")
+				.track(v-if="session.track") {{ getLocalizedString(session.track.name) }}
+				.do_not_record.no-print(v-if="session.do_not_record", :title="$t('This session will not be recorded.')", :aria-label="$t('This session will not be recorded.')")
+					svg(viewBox="0 0 116.59076 116.59076", width="24px", height="24px", fill="none", xmlns="http://www.w3.org/2000/svg", aria-hidden="true")
+						g(transform="translate(-9.3465481,-5.441411)")
+							rect(style="fill:#000000;fill-opacity;stroke:none;stroke-width:11.2589;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", width="52.753284", height="39.619537", x="35.496307", y="43.927021", rx="5.5179553", ry="7.573648")
+							path(style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:18.7997;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="M 99.787546,47.04792 V 80.425654 L 77.727407,63.736793 Z")
+							path(style="fill:none;stroke:#b23e65;stroke-width:12;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="m 35.553146,95.825578 64.177559,-64.17757 m 16.294055,32.08879 A 48.382828,48.382828 0 0 1 67.641925,112.11961 48.382828,48.382828 0 0 1 19.259099,63.736798 48.382828,48.382828 0 0 1 67.641925,15.353968 48.382828,48.382828 0 0 1 116.02476,63.736798 Z")
 	.warning.no-print(v-if="warnings?.length")
 		.warning-icon.text-danger
 			span(v-if="warnings.length > 1") {{ warnings.length }}

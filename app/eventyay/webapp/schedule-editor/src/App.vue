@@ -26,7 +26,7 @@
 								i.fa.fa-sort-amount-desc(v-if="unassignedSort === method.name && unassignedSortDirection === -1")
 					session.new-break(:session="{title: '+ ' + translations.newBreak}", :isDragged="false", tabindex="0", @startDragging="startNewBreak", @click.stop="showNewBreakHint", @focus="showNewBreakHint", @blur="removeNewBreakHint", @keydown="onNewBreakKeydown", @pointerleave="removeNewBreakHint", :aria-describedby="newBreakTooltip ? 'new-break-hint' : undefined")
 					.new-break-hint(v-if="newBreakTooltip", id="new-break-hint", role="tooltip") {{ newBreakTooltip }}
-				session(v-for="un in unscheduled", :key="un.id", :session="un", @startDragging="startDragging", :isDragged="draggedSession && un.id === draggedSession.id")
+				session(v-for="un in unscheduled", :key="un.id", :session="un", @startDragging="startDragging", :isDragged="draggedSession && un.id === draggedSession.id", @editSession="editorStart($event)", @deleteSession="deleteSessionDirect($event)", @assignMembers="openAssignModal($event)")
 				.deleted-room-sessions(v-if="deletedRoomSessions.length")
 					h3 {{ $t('Deleted Room Sessions') }}
 					p {{ $t('These sessions were assigned to a room that has been deleted. Drag them into another room to restore them to the schedule.') }}
@@ -87,11 +87,11 @@
 						.data-row(v-if="isShiftsMode").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Roles') }}
 							.col-md-9
-								div(v-for="(r, index) in editorSession.roles" :key="index" style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;")
-									select.form-control(v-model="r.id", required, style="flex: 1")
+								.role-row(v-for="(r, index) in editorSession.roles" :key="index")
+									select.form-control.role-select(v-model="r.id", required)
 										option(:value="undefined" disabled) {{ $t('Select a role') }}
 										option(v-for="role in schedule?.roles", :key="role.id", :value="role.id") {{ getLocalizedString(role.name) }}
-									input.form-control(v-model.number="r.capacity", type="number", min="1", required, style="width: 100px" title="Capacity")
+									input.form-control.role-capacity(v-model.number="r.capacity", type="number", min="1", required, title="Capacity")
 									a.text-danger(href="#", @click.prevent="editorSession.roles.splice(index, 1)")
 										i.fa.fa-trash
 								a(href="#", @click.prevent="editorSession.roles.push({id: undefined, capacity: 1})")
@@ -109,7 +109,7 @@
 								span(v-else) {{ warnings[editorSession.code][0].message }}
 					.button-row
 						input(type="submit")
-						bunt-button#btn-delete(v-if="editorSession.id", @click="editorDelete", :loading="editorSessionWaiting") {{ $t('Delete') }}
+						bunt-button#btn-delete(v-if="isShiftsMode ? editorSession.id : !editorSession.code", @click="editorDelete", :loading="editorSessionWaiting") {{ $t('Delete') }}
 						bunt-button#btn-save(@click="editorSave", :loading="editorSessionWaiting") {{ $t('Save') }}
 			
 			#assign-modal-wrapper(v-if="assigningSession", @click="closeAssignModal")
@@ -117,24 +117,24 @@
 					h3.session-editor-title
 						span {{ $t('Assign Members for ') }} {{ getLocalizedString(assigningSession.title) }}
 					
-					.data.px-4.py-3
-						template(v-for="role in assigningSession.roles", :key="role.id")
+					.data.assign-data
+						.assign-role(v-for="role in assigningSession.roles", :key="role.id")
 							h4 {{ getLocalizedString(role.name) }} ({{ role.assigned.length }}/{{ role.capacity }} {{ $t('assigned') }})
 							
-							.assigned-list.mb-4
-								span.badge.badge-primary.mr-2.mb-2.p-2.d-inline-block(v-for="user in role.assigned", :key="user.id", style="font-size: 14px; padding: 6px 10px;")
+							.assigned-list
+								span.member-chip(v-for="user in role.assigned", :key="user.id")
 									| {{ user.name }}
-									i.fa.fa-times.ml-2.text-danger(style="cursor: pointer", @click="unassignMember(role.id, user.id)")
+									button.member-chip-remove(type="button", @click="unassignMember(role.id, user.id)", :aria-label="$t('Unassign')", :title="$t('Unassign')")
+										i.fa.fa-times(aria-hidden="true")
 								p.text-muted(v-if="!role.assigned.length") {{ $t('No members assigned yet.') }}
 							
-							.assign-new.mt-3
-								.form-group.row
-									.col-md-8
-										select.form-control(v-model="selectedMemberIds[role.id]")
-											option(:value="undefined" disabled) {{ $t('Select a member to assign') }}
-											option(v-for="vol in availableMembersByRole[role.id]", :key="vol.id", :value="vol.id") {{ vol.name }} ({{ vol.email }})
-									.col-md-4
-										button.btn.btn-primary.btn-block(@click="assignMember(role.id)", :disabled="assigningWaiting") {{ $t('Assign') }}
+							.assign-new.form-group.row
+								.col-md-8
+									select.form-control(v-model="selectedMemberIds[role.id]")
+										option(:value="undefined" disabled) {{ $t('Select a member to assign') }}
+										option(v-for="vol in availableMembersByRole[role.id]", :key="vol.id", :value="vol.id") {{ vol.name }} ({{ vol.email }})
+								.col-md-4
+									button.assign-btn(type="button", @click="assignMember(role.id)", :disabled="assigningWaiting") {{ $t('Assign') }}
 					
 					.button-row
 						bunt-button(@click="closeAssignModal") {{ $t('Close') }}
@@ -252,8 +252,7 @@ const editorSession = ref<SessionData | null>(null)
 const editorSessionWaiting = ref<boolean>(false)
 const assigningSession = ref<SessionData | null>(null)
 const assigningWaiting = ref<boolean>(false)
-const selectedMemberIds = ref<Record<number, number | undefined>>({})
-const availableMembers = ref<any[]>([])
+const selectedMemberIds = ref<Record<string, number | undefined>>({})
 const isUnassigning = ref<boolean>(false)
 const locales = ref<string[]>(['en'])
 const unassignedFilterString = ref<string>('')
@@ -646,21 +645,27 @@ async function editorSave(): Promise<void> {
 
 async function editorDelete(): Promise<void> {
   if (!editorSession.value) return
-  if (!window.confirm($t('Are you sure you want to delete this session?'))) return
-  
-  editorSessionWaiting.value = true
-  await api.deleteTalk({ id: editorSession.value.id } as any)
-  if (schedule.value) {
-    schedule.value.talks = schedule.value.talks.filter((s) => s.id !== editorSession.value?.id)
-  }
-  editorSessionWaiting.value = false
+  await deleteSessionById(editorSession.value.id)
   editorSession.value = null
-  await fetchAdditionalScheduleData()
 }
 
 async function deleteSessionDirect(session: SessionData | Talk): Promise<void> {
-  editorSession.value = { ...session } as SessionData
-  await editorDelete()
+  await deleteSessionById(session.id)
+}
+
+async function deleteSessionById(id: number): Promise<void> {
+  if (!window.confirm($t('Are you sure you want to delete this session?'))) return
+
+  editorSessionWaiting.value = true
+  try {
+    await api.deleteTalk({ id } as any)
+    if (schedule.value) {
+      schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
+    }
+    await fetchAdditionalScheduleData()
+  } finally {
+    editorSessionWaiting.value = false
+  }
 }
 
 async function openAssignModal(session: SessionData | Talk): Promise<void> {
@@ -678,7 +683,6 @@ async function openAssignModal(session: SessionData | Talk): Promise<void> {
 function closeAssignModal(): void {
   assigningSession.value = null
   selectedMemberIds.value = {}
-  availableMembers.value = []
   availableMembersByRole.value = {}
 }
 
@@ -1185,6 +1189,86 @@ onUnmounted(() => {
 					ul
 						list-style: none
 						padding: 0
+			.input-group
+				position: relative
+				display: flex
+				flex-wrap: wrap
+				align-items: stretch
+				> input
+					flex: 1 1 auto
+					width: 1%
+					min-width: 0
+					border-top-right-radius: 0
+					border-bottom-right-radius: 0
+			.input-group-append
+				display: flex
+				margin-left: -1px
+			.input-group-text
+				display: flex
+				align-items: center
+				padding: 0.375rem 0.75rem
+				color: var(--color-text-input)
+				white-space: nowrap
+				background-color: var(--color-grey-lighter)
+				border: 1px solid var(--color-border)
+				border-top-right-radius: var(--size-border-radius)
+				border-bottom-right-radius: var(--size-border-radius)
+			.role-row
+				display: flex
+				align-items: center
+				gap: 10px
+				margin-bottom: 10px
+				.role-select
+					flex: auto
+				.role-capacity
+					flex: none
+					width: 100px
 		.warning
 			color: #b23e65
+		.assign-data
+			.assign-role
+				margin-bottom: 24px
+			.assign-new
+				align-items: center
+		.member-chip
+			display: inline-flex
+			align-items: center
+			gap: 6px
+			background-color: $clr-grey-200
+			color: $clr-primary-text-light
+			border-radius: 14px
+			padding: 4px 6px 4px 12px
+			margin: 0 6px 6px 0
+			font-size: 13px
+			line-height: 1.4
+			.member-chip-remove
+				display: inline-flex
+				align-items: center
+				justify-content: center
+				width: 18px
+				height: 18px
+				border: none
+				border-radius: 50%
+				background: none
+				color: $clr-danger
+				cursor: pointer
+				padding: 0
+				font-size: 11px
+				&:hover
+					background-color: rgba(0, 0, 0, 0.08)
+		.assign-btn
+			width: 100%
+			height: 100%
+			min-height: 38px
+			border: none
+			border-radius: 4px
+			background-color: #2185d0
+			color: $clr-white
+			font-weight: bold
+			cursor: pointer
+			&:hover
+				background-color: #1c71b1
+			&:disabled
+				opacity: 0.6
+				cursor: default
 </style>
