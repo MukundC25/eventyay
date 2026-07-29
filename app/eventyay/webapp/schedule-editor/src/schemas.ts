@@ -65,8 +65,8 @@ const RoleAssignmentSchema = z.object({
   name: LocalizedTextSchema,
   capacity: z.number(),
   assigned: z.array(z.object({
-    name: z.string(),
-    email: z.string()
+    id: z.number(),
+    name: z.string()
   })).default([])
 });
 

@@ -51,6 +51,7 @@ interface TalkPayload {
   duration?: number;
   role?: string | number;
   capacity?: number;
+  roles?: { id: string | number; capacity: number }[];
 }
 
 // Define specific types for HTTP request bodies
@@ -159,8 +160,7 @@ const api = {
       };
       
       if (isShiftsMode()) {
-        payload.role = talk.role;
-        payload.capacity = talk.capacity;
+        payload.roles = talk.roles;
       }
     }
     
@@ -196,10 +196,10 @@ const api = {
     return this.http('POST', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
   },
 
-  async unassignMember(shiftId: number, userId: number): Promise<any> {
+  async unassignMember(shiftId: number, roleId: number, userId: number): Promise<any> {
     const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
-    return this.http('DELETE', url, { shift_id: shiftId, user_id: userId });
-  }
+    return this.http('DELETE', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
+  },
 };
 
 export default api

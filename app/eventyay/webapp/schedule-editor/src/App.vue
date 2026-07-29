@@ -85,15 +85,18 @@
 								.input-group-append
 									span.input-group-text {{ $t('minutes') }}
 						.data-row(v-if="isShiftsMode").form-group.row
-							label.data-label.col-form-label.col-md-3 {{ $t('Role') }}
+							label.data-label.col-form-label.col-md-3 {{ $t('Roles') }}
 							.col-md-9
-								select.form-control(v-model="editorSession.role", required)
-									option(:value="undefined" disabled) {{ $t('Select a role') }}
-									option(v-for="role in schedule?.roles", :key="role.id", :value="role.id") {{ getLocalizedString(role.name) }}
-						.data-row(v-if="isShiftsMode").form-group.row
-							label.data-label.col-form-label.col-md-3 {{ $t('Capacity Required') }}
-							.col-md-9
-								input.form-control(v-model.number="editorSession.capacity", type="number", min="1", required)
+								div(v-for="(r, index) in editorSession.roles" :key="index" style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;")
+									select.form-control(v-model="r.id", required, style="flex: 1")
+										option(:value="undefined" disabled) {{ $t('Select a role') }}
+										option(v-for="role in schedule?.roles", :key="role.id", :value="role.id") {{ getLocalizedString(role.name) }}
+									input.form-control(v-model.number="r.capacity", type="number", min="1", required, style="width: 100px" title="Capacity")
+									a.text-danger(href="#", @click.prevent="editorSession.roles.splice(index, 1)")
+										i.fa.fa-trash
+								a(href="#", @click.prevent="editorSession.roles.push({id: undefined, capacity: 1})")
+									i.fa.fa-plus
+									|  {{ $t('Add Role') }}
 
 
 						.data-row(v-if="editorSession.code && warnings[editorSession.code] && warnings[editorSession.code].length").form-group.row
@@ -118,8 +121,8 @@
 						template(v-for="role in assigningSession.roles", :key="role.id")
 							h4 {{ getLocalizedString(role.name) }} ({{ role.assigned.length }}/{{ role.capacity }} {{ $t('assigned') }})
 							
-							.assigned-list.mb-3
-								span.badge.badge-primary.mr-2.mb-2.p-2(v-for="user in role.assigned", :key="user.id", style="font-size: 14px")
+							.assigned-list.mb-4
+								span.badge.badge-primary.mr-2.mb-2.p-2.d-inline-block(v-for="user in role.assigned", :key="user.id", style="font-size: 14px; padding: 6px 10px;")
 									| {{ user.name }}
 									i.fa.fa-times.ml-2.text-danger(style="cursor: pointer", @click="unassignMember(role.id, user.id)")
 								p.text-muted(v-if="!role.assigned.length") {{ $t('No members assigned yet.') }}
@@ -127,11 +130,11 @@
 							.assign-new.mt-3
 								.form-group.row
 									.col-md-8
-										select.form-control(v-model="selectedMemberId")
+										select.form-control(v-model="selectedMemberIds[role.id]")
 											option(:value="undefined" disabled) {{ $t('Select a member to assign') }}
-											option(v-for="vol in availableMembers", :key="vol.id", :value="vol.id") {{ vol.name }} ({{ vol.email }})
+											option(v-for="vol in availableMembersByRole[role.id]", :key="vol.id", :value="vol.id") {{ vol.name }} ({{ vol.email }})
 									.col-md-4
-										bunt-button(@click="assignMember(role.id)", :loading="assigningWaiting") {{ $t('Assign') }}
+										button.btn.btn-primary.btn-block(@click="assignMember(role.id)", :disabled="assigningWaiting") {{ $t('Assign') }}
 					
 					.button-row
 						bunt-button(@click="closeAssignModal") {{ $t('Close') }}
@@ -241,6 +244,7 @@ const availabilities = reactive<{ rooms: Record<string, AvailabilityEntry[]>; ta
   rooms: {},
   talks: {},
 })
+const availableMembersByRole = ref<Record<string, any[]>>({})
 const warnings = reactive<Record<string, Warning[]>>({})
 const currentDay = ref<Moment | null>(null)
 const draggedSession = ref<SessionData | null>(null)
@@ -248,8 +252,8 @@ const editorSession = ref<SessionData | null>(null)
 const editorSessionWaiting = ref<boolean>(false)
 const assigningSession = ref<SessionData | null>(null)
 const assigningWaiting = ref<boolean>(false)
+const selectedMemberIds = ref<Record<number, number | undefined>>({})
 const availableMembers = ref<any[]>([])
-const selectedMemberId = ref<number | undefined>(undefined)
 const isUnassigning = ref<boolean>(false)
 const locales = ref<string[]>(['en'])
 const unassignedFilterString = ref<string>('')
@@ -580,9 +584,12 @@ async function createSession(e: CreateSessionEvent): Promise<void> {
 
 function editorStart(session: SessionData | Talk): void {
   const newEditorSession = { ...session } as SessionData
-  if (isShiftsMode.value && newEditorSession.roles && newEditorSession.roles.length > 0) {
-    newEditorSession.role = newEditorSession.roles[0].id
-    newEditorSession.capacity = newEditorSession.roles[0].capacity
+  if (isShiftsMode.value) {
+    if (!newEditorSession.roles || newEditorSession.roles.length === 0) {
+      newEditorSession.roles = [{ id: undefined, capacity: 1 }]
+    } else {
+      newEditorSession.roles = newEditorSession.roles.map((r: any) => ({ ...r }))
+    }
   }
   editorSession.value = newEditorSession
 }
@@ -615,8 +622,7 @@ async function editorSave(): Promise<void> {
   }
 
   if (isShiftsMode.value) {
-    talk.role = editorSession.value.role
-    talk.capacity = editorSession.value.capacity
+    talk.roles = editorSession.value.roles?.filter((r: any) => r.id !== undefined)
   }
   
   await saveTalk(talk)
@@ -628,6 +634,11 @@ async function editorSave(): Promise<void> {
       sessionInSchedule.title = editorSession.value.title as Record<string, string>
     }
   }
+  
+  if (isShiftsMode.value) {
+    schedule.value = await fetchSchedule()
+  }
+  
   editorSessionWaiting.value = false
   editorSession.value = null
   await fetchAdditionalScheduleData()
@@ -655,32 +666,38 @@ async function deleteSessionDirect(session: SessionData | Talk): Promise<void> {
 async function openAssignModal(session: SessionData | Talk): Promise<void> {
   assigningSession.value = { ...session } as SessionData
   if (assigningSession.value.roles && assigningSession.value.roles.length > 0) {
-    const roleId = assigningSession.value.roles[0].id
-    await loadMembers(roleId)
+    const promises = []
+    for (const role of assigningSession.value.roles) {
+      selectedMemberIds.value[String(role.id)] = undefined
+      promises.push(loadMembers(role.id))
+    }
+    await Promise.all(promises)
   }
 }
 
 function closeAssignModal(): void {
   assigningSession.value = null
-  selectedMemberId.value = undefined
+  selectedMemberIds.value = {}
   availableMembers.value = []
+  availableMembersByRole.value = {}
 }
 
 async function loadMembers(roleId: number): Promise<void> {
   try {
     const response = await api.fetchMembers(roleId)
-    availableMembers.value = response.members || []
+    availableMembersByRole.value[String(roleId)] = response.members || []
   } catch (error) {
-    console.error('Failed to load members', error)
+    console.error('Failed to fetch members', error)
   }
 }
 
 async function assignMember(roleId: number): Promise<void> {
-  if (!assigningSession.value || !selectedMemberId.value) return
+  const selectedMemberId = selectedMemberIds.value[String(roleId)]
+  if (!assigningSession.value || !selectedMemberId) return
   
   assigningWaiting.value = true
   try {
-    await api.assignMember(Number(assigningSession.value.id), roleId, selectedMemberId.value)
+    await api.assignMember(Number(assigningSession.value.id), roleId, selectedMemberId)
     
     // Refresh schedule data and update assigningSession
     const sched = await fetchSchedule({ warnings: true })
@@ -692,7 +709,7 @@ async function assignMember(roleId: number): Promise<void> {
       }
     }
     await loadMembers(roleId)
-    selectedMemberId.value = undefined
+    selectedMemberIds.value[String(roleId)] = undefined
   } catch (error) {
     console.error('Failed to assign member', error)
   }
@@ -705,7 +722,7 @@ async function unassignMember(roleId: number, userId: number): Promise<void> {
   
   assigningWaiting.value = true
   try {
-    await api.unassignMember(Number(assigningSession.value.id), userId)
+    await api.unassignMember(Number(assigningSession.value.id), roleId, userId)
     
     // Refresh schedule data and update assigningSession
     const sched = await fetchSchedule({ warnings: true })
