@@ -168,6 +168,9 @@ const api = {
     const response = await this.http<Talk>(action, url, payload);
     
     if (action !== 'DELETE') {
+      if (isShiftsMode()) {
+        return response;
+      }
       return TalkSchema.parse(response);
     }
   },
