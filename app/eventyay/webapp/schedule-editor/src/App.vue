@@ -149,7 +149,7 @@ import GridSchedule from '~/components/GridSchedule.vue'
 import Session from '~/components/Session.vue'
 import api, { isShiftsMode as checkShiftsMode } from '~/api'
 import { getLocalizedString } from '~/utils'
-import type { AvailabilityEntry } from '~/schemas';
+import type { AvailabilityEntry, RoleAssignment, ScheduleRole } from '~/schemas';
 
 interface Speaker {
   code?: string | null
@@ -187,7 +187,7 @@ interface Talk {
   uncreated?: boolean
   availabilities?: AvailabilityEntry[]
   do_not_record?: boolean
-  roles?: any[]
+  roles?: RoleAssignment[]
   role?: string | number
   capacity?: number
 }
@@ -208,7 +208,7 @@ interface SessionData {
   uncreated?: boolean
   availabilities?: AvailabilityEntry[]
   do_not_record?: boolean
-  roles?: any[]
+  roles?: RoleAssignment[]
   role?: string | number
   capacity?: number
 }
@@ -229,7 +229,7 @@ interface Schedule {
   speakers: Speaker[]
   talks: Talk[]
   now?: string
-  roles?: any[]
+  roles?: ScheduleRole[]
 }
 
 const props = defineProps<{
@@ -244,7 +244,7 @@ const availabilities = reactive<{ rooms: Record<string, AvailabilityEntry[]>; ta
   rooms: {},
   talks: {},
 })
-const availableMembersByRole = ref<Record<string, any[]>>({})
+const availableMembersByRole = ref<Record<string, { id: number; name: string; email: string }[]>>({})
 const warnings = reactive<Record<string, Warning[]>>({})
 const currentDay = ref<Moment | null>(null)
 const draggedSession = ref<SessionData | null>(null)
@@ -362,7 +362,7 @@ const unscheduled = computed<SessionData[]>(() => {
       duration: session.duration,
       state: session.state,
       do_not_record: session.do_not_record,
-      roles: (session as any).roles || [],
+      roles: session.roles ?? [],
     } as SessionData)
   }
   if (unassignedFilterString.value.length) {
@@ -520,7 +520,7 @@ const dateFormat = computed<string>(() => {
   return 'ddd DD. MMM'
 })
 
-async function fetchSchedule(options?: Record<string, any>): Promise<Schedule> {
+async function fetchSchedule(options?: { since?: string; warnings?: boolean }): Promise<Schedule> {
   const sched = await api.fetchTalks(options) as unknown as Schedule
   return sched
 }
@@ -587,7 +587,7 @@ function editorStart(session: SessionData | Talk): void {
     if (!newEditorSession.roles || newEditorSession.roles.length === 0) {
       newEditorSession.roles = [{ id: undefined, capacity: 1 }]
     } else {
-      newEditorSession.roles = newEditorSession.roles.map((r: any) => ({ ...r }))
+      newEditorSession.roles = newEditorSession.roles.map((r) => ({ ...r }))
     }
   }
   editorSession.value = newEditorSession
@@ -621,7 +621,7 @@ async function editorSave(): Promise<void> {
   }
 
   if (isShiftsMode.value) {
-    talk.roles = editorSession.value.roles?.filter((r: any) => r.id !== undefined)
+    talk.roles = editorSession.value.roles?.filter((r) => r.id !== undefined)
   }
   
   await saveTalk(talk)
@@ -692,7 +692,7 @@ function closeAssignModal(): void {
 async function loadMembers(roleId: number): Promise<void> {
   try {
     const response = await api.fetchMembers(roleId)
-    availableMembersByRole.value[String(roleId)] = response.members || []
+    availableMembersByRole.value[String(roleId)] = response.members ?? []
   } catch (error) {
     console.error('Failed to fetch members', error)
   }

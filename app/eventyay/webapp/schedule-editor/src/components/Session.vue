@@ -53,6 +53,7 @@ import { computed } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import { getLocalizedString } from '~/utils'
 import { isShiftsMode as checkShiftsMode } from '~/api'
+import type { RoleAssignment } from '~/schemas'
 
 interface Speaker {
   name: string
@@ -80,8 +81,8 @@ interface Session {
   abstract?: string
   room?: string | number
   do_not_record?: boolean
-  roles?: any[]
-  [key: string]: any
+  roles?: RoleAssignment[]
+  [key: string]: string | number | boolean | Record<string, string> | Speaker[] | Track | Moment | RoleAssignment[] | null | undefined
 }
 
 interface Warning {
@@ -108,7 +109,7 @@ const isBreak = computed(() => props.session.code == null)
 
 const isShiftsMode = computed(() => checkShiftsMode())
 
-const getCapacityClass = (role: any) => {
+const getCapacityClass = (role: RoleAssignment) => {
   if (role.assigned.length >= role.capacity) return 'badge-full'
   if (role.assigned.length === 0) return 'badge-empty'
   return 'badge-partial'

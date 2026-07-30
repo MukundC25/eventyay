@@ -56,6 +56,14 @@ interface TalkPayload {
 // Define specific types for HTTP request bodies
 type HttpRequestBody = Record<string, unknown> | string | null;
 
+interface MembersResponse {
+  members: { id: number; name: string; email: string }[];
+}
+
+interface AssignmentResponse {
+  status: string;
+}
+
 const api = {
   getOrgaEventBase,
   get organizerSlug() {
@@ -160,9 +168,6 @@ const api = {
     const response = await this.http<Talk>(action, url, payload);
     
     if (action !== 'DELETE') {
-      if (isShiftsMode()) {
-        return response as any;
-      }
       return TalkSchema.parse(response);
     }
   },
@@ -179,19 +184,19 @@ const api = {
     return response;
   },
 
-  async fetchMembers(roleId: number): Promise<any> {
+  async fetchMembers(roleId: number): Promise<MembersResponse> {
     const url = `${getOrgaEventBase()}/schedule/api/members/?role=${roleId}`;
-    return this.http('GET', url, null);
+    return this.http<MembersResponse>('GET', url, null);
   },
 
-  async assignMember(shiftId: number, roleId: number, userId: number): Promise<any> {
+  async assignMember(shiftId: number, roleId: number, userId: number): Promise<AssignmentResponse> {
     const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
-    return this.http('POST', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
+    return this.http<AssignmentResponse>('POST', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
   },
 
-  async unassignMember(shiftId: number, roleId: number, userId: number): Promise<any> {
+  async unassignMember(shiftId: number, roleId: number, userId: number): Promise<AssignmentResponse> {
     const url = `${getOrgaEventBase()}/schedule/api/assignments/?shift_id=${shiftId}&role_id=${roleId}&user_id=${userId}`;
-    return this.http('DELETE', url, null);
+    return this.http<AssignmentResponse>('DELETE', url, null);
   },
 };
 
