@@ -1,8 +1,8 @@
 <template lang="pug">
-.pretalx-schedule(:style="{'--scrollparent-width': scrollParentWidth + 'px'}", :class="draggedSession ? ['is-dragging'] : []", @pointerup="stopDragging")
+.pretalx-schedule(:style="{'--scrollparent-width': scrollParentWidth + 'px'}", :class="[draggedSession ? 'is-dragging' : '', isPublicShiftsMode ? 'is-public-shifts' : '']", @pointerup="isPublicShiftsMode ? null : stopDragging")
 	template(v-if="schedule")
 		#main-wrapper
-			#unassigned.no-print(v-scrollbar.y="", @pointerenter="isUnassigning = true", @pointerleave="onUnassignedLeave")
+			#unassigned.no-print(v-if="!isPublicShiftsMode", v-scrollbar.y="", @pointerenter="isUnassigning = true", @pointerleave="onUnassignedLeave")
 				.unassigned-header
 					.density-controls
 						button.density-btn(:class="{active: condensedView}", @click="toggleCondensedView", :title="condensedView ? $t('Normal view') : $t('Condensed view')", :aria-pressed="condensedView.toString()")
@@ -46,13 +46,13 @@
 					:currentDay="currentDay",
 					:draggedSession="draggedSession",
 					@changeDay="changeDay",
-					@startDragging="startDragging",
-					@rescheduleSession="rescheduleSession",
-					@createSession="createSession",
-					@editSession="editorStart($event)",
-					@deleteSession="deleteSessionDirect($event)",
-					@assignMembers="openAssignModal($event)")
-			#session-editor-wrapper(v-if="editorSession", @click="editorSession = null")
+					@startDragging="isPublicShiftsMode ? null : startDragging($event)",
+					@rescheduleSession="isPublicShiftsMode ? null : rescheduleSession($event)",
+					@createSession="isPublicShiftsMode ? null : createSession($event)",
+					@editSession="isPublicShiftsMode ? null : editorStart($event)",
+					@deleteSession="isPublicShiftsMode ? null : deleteSessionDirect($event)",
+					@assignMembers="isPublicShiftsMode ? null : openAssignModal($event)")
+			#session-editor-wrapper(v-if="editorSession && !isPublicShiftsMode", @click="editorSession = null")
 				form#session-editor(@click.stop="", @submit.prevent="editorSave")
 					h3.session-editor-title(v-if="editorSession.code")
 						a(v-if="organizerSlug && eventSlug", :href="`${api.getOrgaEventBase()}/submissions/${editorSession.code}/`") {{ getLocalizedString(editorSession.title) }}
@@ -112,7 +112,7 @@
 						bunt-button#btn-delete(v-if="isShiftsMode ? editorSession.id : !editorSession.code", @click="editorDelete", :loading="editorSessionWaiting") {{ $t('Delete') }}
 						bunt-button#btn-save(@click="editorSave", :loading="editorSessionWaiting") {{ $t('Save') }}
 			
-			#assign-modal-wrapper(v-if="assigningSession", @click="closeAssignModal")
+			#assign-modal-wrapper(v-if="assigningSession && !isPublicShiftsMode", @click="closeAssignModal")
 				#session-editor(@click.stop="")
 					h3.session-editor-title
 						span {{ $t('Assign Members for ') }} {{ getLocalizedString(assigningSession.title) }}
@@ -147,7 +147,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, onBeforeMount, nextTic
 import moment, { Moment } from 'moment-timezone'
 import GridSchedule from '~/components/GridSchedule.vue'
 import Session from '~/components/Session.vue'
-import api, { isShiftsMode as checkShiftsMode } from '~/api'
+import api, { isShiftsMode as checkShiftsMode, isPublicShiftsMode as checkPublicShiftsMode } from '~/api'
 import { getLocalizedString } from '~/utils'
 import type { AvailabilityEntry, RoleAssignment, ScheduleRole } from '~/schemas';
 
@@ -266,6 +266,7 @@ const showTimeDensityMenu = ref<boolean>(false)
 const customDropdownRef = ref<HTMLElement | null>(null)
 
 const isShiftsMode = computed(() => checkShiftsMode())
+const isPublicShiftsMode = computed(() => checkPublicShiftsMode())
 
 const condensedView = ref<boolean>(localStorage.getItem('schedule-editor-condensed') === '1')
 const timeDensityMinutes = ref<number>(Number(localStorage.getItem('schedule-time-density-minutes') || 30))
@@ -916,6 +917,12 @@ onUnmounted(() => {
 		flex: auto
 		min-height: 0
 		min-width: 0
+	&.is-public-shifts
+		#main-wrapper
+			display: block
+		#schedule-wrapper
+			width: 100%
+			margin-right: 0
 	.settings
 		margin-left: 18px
 		align-self: flex-start

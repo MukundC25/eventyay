@@ -8,7 +8,7 @@
 	.info
 		.title-row(style="display: flex; justify-content: space-between; align-items: flex-start;")
 			.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
-			.card-actions(v-if="isShiftsMode && !isBreak")
+			.card-actions(v-if="isShiftsMode && !isPublicShiftsMode && !isBreak")
 				button.btn.btn-link.p-0.mr-2(type="button", @pointerdown.stop, @click.stop="$emit('editSession', session)", :aria-label="$t('Edit')", :title="$t('Edit')")
 					i.fa.fa-pencil(aria-hidden="true")
 				button.btn.btn-link.p-0.text-danger(type="button", @pointerdown.stop, @click.stop="$emit('deleteSession', session)", :aria-label="$t('Delete')", :title="$t('Delete')")
@@ -26,7 +26,21 @@
 							| {{ user.name }}{{ i < role.assigned.length - 1 ? ', ' : '' }}
 						span.text-muted(v-if="!role.assigned.length") {{ $t('None') }}
 			
-			.shift-manage.mt-2.text-right(v-if="!isBreak")
+			template(v-if="isPublicShiftsMode")
+				.shift-manage.mt-2(v-if="!isBreak")
+					template(v-if="isMyClaimed")
+						span.role-badge.badge-full.mr-2 {{ $t('Signed up') }}
+						form.ts-inline-form(:action="withdrawUrl", method="post")
+							input(type="hidden", name="csrfmiddlewaretoken", :value="csrfToken")
+							button.btn.btn-sm.btn-danger(type="submit", @click.stop, @pointerdown.stop) {{ $t('Drop shift') }}
+					template(v-else-if="hasClaimableSlot")
+						form.ts-inline-form(:action="claimUrl", method="post")
+							input(type="hidden", name="csrfmiddlewaretoken", :value="csrfToken")
+							button.btn.btn-sm.btn-primary(type="submit", @click.stop, @pointerdown.stop) {{ $t('Sign Up') }}
+					template(v-else)
+						span.text-muted(style="font-size:11px") {{ $t('Full / Restricted') }}
+			
+			.shift-manage.mt-2.text-right(v-else-if="!isBreak")
 				button.btn.btn-sm.btn-outline-primary(type="button", @pointerdown.stop, @click.stop="$emit('assignMembers', session)") {{ session.roles?.some(r => r.assigned.length < r.capacity) ? $t('Assign Members') : $t('Manage') }}
 		
 		template(v-else)
@@ -52,7 +66,7 @@
 import { computed } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import { getLocalizedString } from '~/utils'
-import { isShiftsMode as checkShiftsMode } from '~/api'
+import { isShiftsMode as checkShiftsMode, isPublicShiftsMode as checkPublicShiftsMode, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/api'
 import type { RoleAssignment } from '~/schemas'
 
 interface Speaker {
@@ -108,6 +122,29 @@ const emit = defineEmits<{
 const isBreak = computed(() => props.session.code == null)
 
 const isShiftsMode = computed(() => checkShiftsMode())
+const isPublicShiftsMode = computed(() => checkPublicShiftsMode())
+
+const claimedShiftIds = computed(() => isPublicShiftsMode.value ? getClaimedShiftIds() : new Set<number>())
+const isMyClaimed = computed(() => claimedShiftIds.value.has(Number(props.session.id)))
+
+const hasClaimableSlot = computed(() => {
+  if (!props.session.roles?.length) return false
+  return props.session.roles.some(
+    (r) => !(r as any).is_restricted && r.assigned.length < r.capacity
+  )
+})
+
+const claimUrl = computed(() => {
+  const base = getClaimBaseUrl()
+  return base ? `${base}${props.session.id}/claim/` : ''
+})
+
+const withdrawUrl = computed(() => {
+  const base = getClaimBaseUrl()
+  return base ? `${base}${props.session.id}/withdraw/` : ''
+})
+
+const csrfToken = computed(() => isPublicShiftsMode.value ? getCsrfToken() : '')
 
 const getCapacityClass = (role: RoleAssignment) => {
   if (role.assigned.length >= role.capacity) return 'badge-full'
@@ -426,6 +463,8 @@ sessionTextExpand()
 		.btn
 			padding: 2px 8px
 			font-size: 12px
+	.ts-inline-form
+		display: inline
 
 @media print
 	.c-linear-schedule-session.isbreak

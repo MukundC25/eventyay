@@ -12,8 +12,20 @@ import moment, { type Moment } from 'moment';
 
 const basePath = process.env.BASE_PATH || '';
 
+function getAppMode(): string {
+  if (typeof window === 'undefined') return '';
+  const appElement = document.querySelector('#app') as HTMLElement | null;
+  return appElement?.dataset?.mode ?? '';
+}
+
 function getOrgaEventBase() {
   if (typeof window === 'undefined') return '';
+  const mode = getAppMode();
+  if (mode === 'public-shifts') {
+    const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)\/teamshifts\//);
+    if (!match) throw new Error('Public shift schedule must be loaded under /<organizer>/<event>/teamshifts/');
+    return `${basePath}/${match[1]}/${match[2]}/teamshifts`;
+  }
   const isShifts = isShiftsMode();
   const modePrefix = isShifts ? '/teamshifts' : '/orga';
   const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
@@ -25,7 +37,35 @@ function getOrgaEventBase() {
 
 export function isShiftsMode(): boolean {
   if (typeof window === 'undefined') return false;
+  const mode = getAppMode();
+  if (mode === 'shifts' || mode === 'public-shifts') return true;
   return window.location.pathname.includes('/teamshifts/');
+}
+
+export function isPublicShiftsMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  return getAppMode() === 'public-shifts';
+}
+
+export function getClaimedShiftIds(): Set<number> {
+  const appElement = document.querySelector('#app') as HTMLElement | null;
+  const raw = appElement?.dataset?.claimedShifts ?? '';
+  if (!raw) return new Set();
+  try {
+    return new Set(JSON.parse(raw) as number[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function getCsrfToken(): string {
+  const appElement = document.querySelector('#app') as HTMLElement | null;
+  return appElement?.dataset?.csrfToken ?? '';
+}
+
+export function getClaimBaseUrl(): string {
+  const appElement = document.querySelector('#app') as HTMLElement | null;
+  return appElement?.dataset?.claimBaseUrl ?? '';
 }
 
 const calculateDuration = (start?: string, end?: string): number | undefined => {
@@ -105,8 +145,16 @@ const api = {
   },
 
   async fetchTalks(options?: { since?: string; warnings?: boolean }): Promise<Schedule> {
-    const endpoint = isShiftsMode() ? '/schedule/api/shifts/' : '/schedule/api/talks/';
-    let url = `${getOrgaEventBase()}${endpoint}`;
+    const mode = getAppMode();
+    let endpoint: string;
+    let url: string;
+    if (mode === 'public-shifts') {
+      endpoint = 'shifts/api/';
+      url = `${getOrgaEventBase()}/${endpoint}`;
+    } else {
+      endpoint = isShiftsMode() ? '/schedule/api/shifts/' : '/schedule/api/talks/';
+      url = `${getOrgaEventBase()}${endpoint}`;
+    }
     const params = new URLSearchParams(window.location.search);
     if (options?.since) params.append('since', options.since);
     if (options?.warnings) params.append('warnings', 'true');
