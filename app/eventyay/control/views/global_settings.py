@@ -334,6 +334,64 @@ class LogDetailView(AdministratorPermissionRequiredMixin, View):
         return JsonResponse({'data': data})
 
 
+class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateView):
+    template_name = 'pretixcontrol/global_plugins.html'
+
+    def get_context_data(self, **kwargs):
+        from eventyay.base.models import GlobalPluginConfig
+        from eventyay.base.plugins import get_all_plugins
+
+        context = super().get_context_data(**kwargs)
+        all_plugins = get_all_plugins(include_inactive=True)
+
+        configs = {
+            c.module: c
+            for c in GlobalPluginConfig.objects.all()
+        }
+
+        plugin_rows = []
+        for plugin in all_plugins:
+            module = plugin.module
+            config = configs.get(module)
+            plugin_rows.append({
+                'module': module,
+                'name': str(plugin.name),
+                'description': str(getattr(plugin, 'description', '')),
+                'version': getattr(plugin, 'version', ''),
+                'category': str(getattr(plugin, 'category', '')),
+                'is_active': config.is_active if config else True,
+                'enable_by_default': config.enable_by_default if config else False,
+                'show_in_organizer_list': config.show_in_organizer_list if config else True,
+            })
+
+        context['plugin_rows'] = plugin_rows
+        return context
+
+    def post(self, request, *args, **kwargs):
+        from eventyay.base.models import GlobalPluginConfig
+        from eventyay.base.plugins import get_all_plugins
+
+        all_plugins = get_all_plugins(include_inactive=True)
+        known_modules = {p.module for p in all_plugins}
+
+        for module in known_modules:
+            is_active = request.POST.get(f'is_active_{module}') == 'on'
+            enable_by_default = request.POST.get(f'enable_by_default_{module}') == 'on'
+            show_in_organizer_list = request.POST.get(f'show_in_organizer_list_{module}') == 'on'
+
+            GlobalPluginConfig.objects.update_or_create(
+                module=module,
+                defaults={
+                    'is_active': is_active,
+                    'enable_by_default': enable_by_default,
+                    'show_in_organizer_list': show_in_organizer_list,
+                },
+            )
+
+        messages.success(request, _('Plugin settings have been saved.'))
+        return redirect(reverse('eventyay_admin:admin.global.plugins'))
+
+
 class PaymentDetailView(AdministratorPermissionRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         p = get_object_or_404(OrderPayment, pk=request.GET.get('pk'))

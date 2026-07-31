@@ -349,7 +349,10 @@ class EventPlugins(
 
         context = super().get_context_data(*args, **kwargs)
         plugins = [
-            p for p in get_all_plugins(self.object) if not p.name.startswith('.') and getattr(p, 'visible', True)
+            p for p in get_all_plugins(self.object)
+            if not p.name.startswith('.')
+            and getattr(p, 'visible', True)
+            and not getattr(p, '_hidden_from_organizer', False)
         ]
         order = [
             'FEATURE',
@@ -393,7 +396,9 @@ class EventPlugins(
         plugins_available = {
             p.module: p
             for p in get_all_plugins(self.object)
-            if not p.name.startswith('.') and getattr(p, 'visible', True)
+            if not p.name.startswith('.')
+            and getattr(p, 'visible', True)
+            and not getattr(p, '_hidden_from_organizer', False)
         }
 
         with transaction.atomic():

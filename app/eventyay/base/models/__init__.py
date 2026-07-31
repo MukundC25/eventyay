@@ -38,6 +38,7 @@ from .exhibitor import (
 )
 from .feedback import Feedback
 from .giftcards import GiftCard, GiftCardAcceptance, GiftCardTransaction
+from .global_plugin_config import GlobalPluginConfig
 from .invoices import Invoice, InvoiceLine, invoice_filename
 from .janus import JanusServer
 from .log import ActivityLog, LogEntry
@@ -164,6 +165,7 @@ __all__ = [
     'GiftCard',
     'GiftCardAcceptance',
     'GiftCardTransaction',
+    'GlobalPluginConfig',
     'GlobalSettings',
     'Invoice',
     'InvoiceAddress',

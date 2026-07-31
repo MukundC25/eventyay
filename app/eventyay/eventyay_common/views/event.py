@@ -503,6 +503,9 @@ class EventCreateView(TemplateView):
 
             default_plugins = list(settings.EVENTYAY_PLUGINS_DEFAULT)
 
+            from eventyay.base.models.global_plugin_config import GlobalPluginConfig
+            global_default_plugins = GlobalPluginConfig.get_default_enabled_modules()
+
             ticketing_plugins = [
                 'eventyay.plugins.banktransfer',
                 'eventyay.plugins.manualpayment',
@@ -514,7 +517,7 @@ class EventCreateView(TemplateView):
                 if plugin_name in installed_apps:
                     ticketing_plugins.append(plugin_name)
 
-            all_plugins = list(dict.fromkeys(default_plugins + ticketing_plugins))
+            all_plugins = list(dict.fromkeys(default_plugins + global_default_plugins + ticketing_plugins))
             event.plugins = ','.join(all_plugins)
 
             event.has_subevents = foundation_data['has_subevents']

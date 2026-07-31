@@ -277,6 +277,11 @@ class EventSerializer(I18nAwareModelSerializer):
         product_meta_properties = validated_data.pop('product_meta_properties', None)
         validated_data.pop('seat_category_mapping', None)
         plugins = validated_data.pop('plugins', list(settings.EVENTYAY_PLUGINS_DEFAULT))
+
+        from eventyay.base.models.global_plugin_config import GlobalPluginConfig
+        global_defaults = GlobalPluginConfig.get_default_enabled_modules()
+        plugins = list(dict.fromkeys(plugins + global_defaults))
+
         tz = validated_data.pop('timezone', None)
         event = super().create(validated_data)
 
