@@ -56,6 +56,16 @@ class EventMiddlewareTest(EventTestMixin, SoupTest):
         print('####', doc)
         self.assertIn(str(self.event.name), doc.find('title').text.strip())
 
+    def test_date_range_always_shown(self):
+        self.event.date_to = self.event.date_from + datetime.timedelta(days=1)
+        self.event.settings.show_date_to = True
+        self.event.settings.show_times = True
+        self.event.save()
+        resp = self.client.get('/%s/%s/' % (self.orga.slug, self.event.slug))
+        self.assertIn(self.event.get_date_range_display(), resp.rendered_content)
+        self.assertIn('Begin:', resp.rendered_content)
+        self.assertIn('End:', resp.rendered_content)
+
     def test_not_found(self):
         resp = self.client.get('/%s/%s/' % ('foo', 'bar'))
         self.assertEqual(resp.status_code, 404)
