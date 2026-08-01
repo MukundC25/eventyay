@@ -661,7 +661,6 @@ class EventSettingsSerializer(SettingsSerializer):
         'checkout_success_text',
         'banner_text',
         'banner_text_bottom',
-        'show_dates_on_frontpage',
         'show_date_to',
         'show_times',
         'show_products_outside_presale_period',
