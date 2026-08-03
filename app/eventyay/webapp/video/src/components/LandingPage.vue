@@ -234,10 +234,10 @@ export default {
 			return null
 		},
 		showDateTo() {
-			return this.world?.showDateTo ?? config?.showDateTo ?? true
+			return config?.showDateTo ?? true
 		},
 		showTimes() {
-			return this.world?.showTimes ?? config?.showTimes ?? true
+			return config?.showTimes ?? true
 		},
 		eventStartLine() {
 			if (!this.eventDateRange) return ''

@@ -66,6 +66,26 @@ class EventMiddlewareTest(EventTestMixin, SoupTest):
         self.assertIn('Begin:', resp.rendered_content)
         self.assertIn('End:', resp.rendered_content)
 
+    def test_date_range_shown_without_times(self):
+        self.event.date_to = self.event.date_from + datetime.timedelta(days=1)
+        self.event.settings.show_date_to = True
+        self.event.settings.show_times = False
+        self.event.save()
+        resp = self.client.get('/%s/%s/' % (self.orga.slug, self.event.slug))
+        self.assertIn(self.event.get_date_range_display(), resp.rendered_content)
+        self.assertNotIn('Begin:', resp.rendered_content)
+        self.assertNotIn('End:', resp.rendered_content)
+
+    def test_date_to_hidden_when_disabled(self):
+        self.event.date_to = self.event.date_from + datetime.timedelta(days=1)
+        self.event.settings.show_date_to = False
+        self.event.settings.show_times = True
+        self.event.save()
+        resp = self.client.get('/%s/%s/' % (self.orga.slug, self.event.slug))
+        self.assertIn(self.event.get_date_range_display(), resp.rendered_content)
+        self.assertIn('Begin:', resp.rendered_content)
+        self.assertNotIn('End:', resp.rendered_content)
+
     def test_not_found(self):
         resp = self.client.get('/%s/%s/' % ('foo', 'bar'))
         self.assertEqual(resp.status_code, 404)
