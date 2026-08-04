@@ -121,6 +121,10 @@ const api = {
   async http<T>(verb: string, url: string, body: HttpRequestBody): Promise<T> {
     const headers: Record<string, string> = {};
     if (body) headers['Content-Type'] = 'application/json';
+    if (verb !== 'GET') {
+      const csrfToken = getCsrfToken();
+      if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+    }
 
     const options: RequestInit = {
       method: verb,
