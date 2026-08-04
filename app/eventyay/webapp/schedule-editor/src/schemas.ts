@@ -69,12 +69,14 @@ const RoleAssignmentSchema = z.object({
   id: z.number(),
   name: LocalizedTextSchema,
   capacity: z.number(),
-  assigned: z.array(AssignedUserSchema).default([])
+  assigned: z.array(AssignedUserSchema).default([]),
+  is_restricted: z.boolean().optional().default(false)
 });
 
 const ScheduleRoleSchema = z.object({
   id: z.number(),
-  name: LocalizedTextSchema
+  name: LocalizedTextSchema,
+  is_restricted: z.boolean().optional().default(false)
 });
 
 export const TalkSchema = z.object({

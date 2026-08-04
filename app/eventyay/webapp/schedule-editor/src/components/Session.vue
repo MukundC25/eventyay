@@ -18,7 +18,9 @@
 			.roles-list(v-if="session.roles && session.roles.length")
 				.role-item(v-for="role in session.roles", :key="role.id")
 					.role-header
-						span.role-name {{ getLocalizedString(role.name) }}
+						span.role-name
+							| {{ getLocalizedString(role.name) }}
+							span.role-restricted-tag(v-if="role.is_restricted", :title="$t('Volunteers cannot self-claim this role; requires manual assignment.')") {{ $t('Restricted') }}
 						span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} {{ $t('assigned') }}
 					.role-assignees
 						span(v-for="(user, i) in role.assigned")
@@ -130,7 +132,7 @@ const isMyClaimed = computed(() => claimedShiftIds.value.has(Number(props.sessio
 const hasClaimableSlot = computed(() => {
   if (!props.session.roles?.length) return false
   return props.session.roles.some(
-    (r) => !(r as any).is_restricted && r.assigned.length < r.capacity
+    (r) => !r.is_restricted && r.assigned.length < r.capacity
   )
 })
 
@@ -438,6 +440,16 @@ sessionTextExpand()
 				align-items: center
 				font-size: 13px
 				font-weight: 600
+				.role-restricted-tag
+					margin-left: 6px
+					font-size: 10px
+					font-weight: 700
+					text-transform: uppercase
+					letter-spacing: 0.02em
+					padding: 1px 5px
+					border-radius: 3px
+					background-color: #6c757d
+					color: $clr-white
 				.role-badge
 					font-size: 11px
 					padding: 2px 6px
