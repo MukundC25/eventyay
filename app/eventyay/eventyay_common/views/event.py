@@ -518,6 +518,8 @@ class EventCreateView(TemplateView):
                     ticketing_plugins.append(plugin_name)
 
             all_plugins = list(dict.fromkeys(default_plugins + global_default_plugins + ticketing_plugins))
+            globally_disabled = GlobalPluginConfig.get_disabled_modules()
+            all_plugins = [m for m in all_plugins if m not in globally_disabled]
             event.plugins = ','.join(all_plugins)
 
             event.has_subevents = foundation_data['has_subevents']

@@ -280,7 +280,8 @@ class EventSerializer(I18nAwareModelSerializer):
 
         from eventyay.base.models.global_plugin_config import GlobalPluginConfig
         global_defaults = GlobalPluginConfig.get_default_enabled_modules()
-        plugins = list(dict.fromkeys(plugins + global_defaults))
+        globally_disabled = GlobalPluginConfig.get_disabled_modules()
+        plugins = [m for m in dict.fromkeys(plugins + global_defaults) if m not in globally_disabled]
 
         tz = validated_data.pop('timezone', None)
         event = super().create(validated_data)

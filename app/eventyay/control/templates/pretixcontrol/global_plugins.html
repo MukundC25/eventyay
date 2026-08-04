@@ -8,12 +8,6 @@
     {% trans "Control which plugins are available on the platform, enabled by default for new events, and visible to organisers." %}
   </p>
 
-  {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-
   <form method="post" action="">
     {% csrf_token %}
     <div class="table-responsive">

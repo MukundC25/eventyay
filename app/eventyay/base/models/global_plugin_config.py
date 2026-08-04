@@ -69,7 +69,7 @@ class GlobalPluginConfig(models.Model):
             return None
 
     @classmethod
-    def get_active_modules(cls) -> frozenset[str]:
+    def get_disabled_modules(cls) -> frozenset[str]:
         """
         Returns the set of plugin modules that have been globally disabled.
         Plugins without a config entry are considered active by default.

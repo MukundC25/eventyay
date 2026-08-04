@@ -53,11 +53,9 @@ def get_all_plugins(event=None, include_inactive=False) -> List[type]:
     plugins = []
 
     if not include_inactive:
-        globally_disabled = GlobalPluginConfig.get_active_modules()
-        hidden_from_organizer = GlobalPluginConfig.get_hidden_from_organizer_modules()
+        globally_disabled = GlobalPluginConfig.get_disabled_modules()
     else:
         globally_disabled = frozenset()
-        hidden_from_organizer = frozenset()
 
     for app in apps.get_app_configs():
         if hasattr(app, 'EventyayPluginMeta'):
@@ -78,9 +76,6 @@ def get_all_plugins(event=None, include_inactive=False) -> List[type]:
             # or it may be listed in BETA_PLUGINS for external packages.
             if not getattr(meta, 'beta', False):
                 meta.beta = app.name in BETA_PLUGINS
-
-            # Mark whether this plugin should be hidden from organiser lists.
-            meta._hidden_from_organizer = app.name in hidden_from_organizer
 
             plugins.append(meta)
     return sorted(
