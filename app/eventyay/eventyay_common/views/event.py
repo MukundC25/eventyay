@@ -41,7 +41,7 @@ from eventyay.base.meetup import (
     is_meetup_event,
     provision_meetup_event,
 )
-from eventyay.base.models import Event, EventMetaValue, Organizer, Quota
+from eventyay.base.models import Event, EventMetaValue, GlobalPluginConfig, Organizer, Quota
 from eventyay.base.services.notifications import notify_organizer_followers
 from eventyay.base.models.cfp import default_fields
 from eventyay.consts import DEFAULT_PLUGINS
@@ -502,8 +502,6 @@ class EventCreateView(TemplateView):
             event.organizer = foundation_data['organizer']
 
             default_plugins = list(settings.EVENTYAY_PLUGINS_DEFAULT)
-
-            from eventyay.base.models.global_plugin_config import GlobalPluginConfig
             global_default_plugins = GlobalPluginConfig.get_default_enabled_modules()
 
             ticketing_plugins = [

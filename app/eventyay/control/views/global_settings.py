@@ -19,7 +19,8 @@ from python_http_client.exceptions import HTTPError
 
 from eventyay.api.models import OAuthApplication
 from eventyay.base.email import CustomSMTPBackend, SendGridEmail
-from eventyay.base.models import LogEntry, OrderPayment, OrderRefund
+from eventyay.base.models import GlobalPluginConfig, LogEntry, OrderPayment, OrderRefund
+from eventyay.base.plugins import get_all_plugins
 from eventyay.base.services.mail import get_mail_backend
 from eventyay.base.services.update_check import check_result_table, update_check
 from eventyay.base.settings import GlobalSettingsObject
@@ -338,9 +339,6 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
     template_name = 'pretixcontrol/global_plugins.html'
 
     def get_context_data(self, **kwargs):
-        from eventyay.base.models import GlobalPluginConfig
-        from eventyay.base.plugins import get_all_plugins
-
         context = super().get_context_data(**kwargs)
         all_plugins = get_all_plugins(include_inactive=True)
 
@@ -368,9 +366,6 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
         return context
 
     def post(self, request, *args, **kwargs):
-        from eventyay.base.models import GlobalPluginConfig
-        from eventyay.base.plugins import get_all_plugins
-
         all_plugins = get_all_plugins(include_inactive=True)
         known_modules = {p.module for p in all_plugins}
 
