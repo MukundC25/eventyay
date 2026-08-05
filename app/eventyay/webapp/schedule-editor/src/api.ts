@@ -22,7 +22,7 @@ function getOrgaEventBase() {
   if (typeof window === 'undefined') return '';
   const mode = getAppMode();
   if (mode === 'public-shifts') {
-    const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)\/teamshifts\//);
+    const match = window.location.pathname.match(/\/([^/]+)\/([^/]+)\/teamshifts\//);
     if (!match) throw new Error('Public shift schedule must be loaded under /<organizer>/<event>/teamshifts/');
     return `${basePath}/${match[1]}/${match[2]}/teamshifts`;
   }
