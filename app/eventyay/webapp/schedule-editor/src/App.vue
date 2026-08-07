@@ -194,6 +194,11 @@ interface Talk {
   capacity?: number
 }
 
+interface EditorRoleEntry {
+  id?: number
+  capacity: number
+}
+
 interface SessionData {
   id: number
   code?: string
@@ -210,7 +215,7 @@ interface SessionData {
   uncreated?: boolean
   availabilities?: AvailabilityEntry[]
   do_not_record?: boolean
-  roles?: RoleAssignment[]
+  roles?: (RoleAssignment | EditorRoleEntry)[]
   role?: string | number
   capacity?: number
 }
@@ -449,7 +454,7 @@ const sessions = computed<SessionData[]>(() => {
     state: session.state,
     room: roomsLookup.value[lookupKey(session.room)],
     do_not_record: session.do_not_record,
-    roles: (session as any).roles || [],
+    roles: session.roles || [],
   }))
 
   sessionList.sort((a, b) => a.start!.diff(b.start!))
@@ -662,6 +667,10 @@ async function deleteSessionById(id: number): Promise<boolean> {
     }
     await fetchAdditionalScheduleData()
     return true
+  } catch (error) {
+    console.error('Failed to delete session', error)
+    window.alert($t('Failed to delete session. Please try again.'))
+    return false
   } finally {
     editorSessionWaiting.value = false
   }
@@ -718,8 +727,9 @@ async function assignMember(roleId: number): Promise<void> {
   } catch (error) {
     console.error('Failed to assign member', error)
     window.alert($t('Failed to assign member. Please try again.'))
+  } finally {
+    assigningWaiting.value = false
   }
-  assigningWaiting.value = false
 }
 
 async function unassignMember(roleId: number, userId: number): Promise<void> {
@@ -743,8 +753,9 @@ async function unassignMember(roleId: number, userId: number): Promise<void> {
   } catch (error) {
     console.error('Failed to unassign member', error)
     window.alert($t('Failed to unassign member. Please try again.'))
+  } finally {
+    assigningWaiting.value = false
   }
-  assigningWaiting.value = false
 }
 
 function showNewBreakHint() {

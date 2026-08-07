@@ -13,8 +13,6 @@ import {
   resolveMode,
   getApiConfig,
   getCsrfToken,
-  getClaimedShiftIds as adapterGetClaimedShiftIds,
-  getClaimBaseUrl as adapterGetClaimBaseUrl,
 } from './adapters'
 
 export { resolveMode as getAppMode } from './adapters'
