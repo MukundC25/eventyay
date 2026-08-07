@@ -108,6 +108,7 @@ export const TalkSchema = z.object({
   duration: z.number().optional(),
   do_not_record: z.union([z.boolean(), z.null()]).optional().transform(val => val === true).default(false),
   roles: z.array(RoleAssignmentSchema).optional().default([]),
+  kind: z.enum(['talk', 'break', 'shift']).optional(),
 });
 
 export const WarningSchema = z.object({
@@ -150,3 +151,4 @@ export type Warnings = z.infer<typeof WarningsSchema>;
 export type AssignedUser = z.infer<typeof AssignedUserSchema>;
 export type RoleAssignment = z.infer<typeof RoleAssignmentSchema>;
 export type ScheduleRole = z.infer<typeof ScheduleRoleSchema>;
+export type { SessionKind } from './adapters/types';

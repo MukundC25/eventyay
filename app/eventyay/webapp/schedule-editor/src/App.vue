@@ -1,8 +1,8 @@
 <template lang="pug">
-.pretalx-schedule(:style="{'--scrollparent-width': scrollParentWidth + 'px'}", :class="[draggedSession ? 'is-dragging' : '', isPublicShiftsMode ? 'is-public-shifts' : '']", @pointerup="isPublicShiftsMode ? null : stopDragging")
+.pretalx-schedule(:style="{'--scrollparent-width': scrollParentWidth + 'px'}", :class="[draggedSession ? 'is-dragging' : '', !caps.canDrag ? 'is-public-shifts' : '']", @pointerup="caps.canDrag ? stopDragging() : null")
 	template(v-if="schedule")
 		#main-wrapper
-			#unassigned.no-print(v-if="!isPublicShiftsMode", v-scrollbar.y="", @pointerenter="isUnassigning = true", @pointerleave="onUnassignedLeave")
+			#unassigned.no-print(v-if="caps.canDrag", v-scrollbar.y="", @pointerenter="isUnassigning = true", @pointerleave="onUnassignedLeave")
 				.unassigned-header
 					.density-controls
 						button.density-btn(:class="{active: condensedView}", @click="toggleCondensedView", :title="condensedView ? $t('Normal view') : $t('Condensed view')", :aria-pressed="condensedView.toString()")
@@ -24,7 +24,7 @@
 								span {{ method.label }}
 								i.fa.fa-sort-amount-asc(v-if="unassignedSort === method.name && unassignedSortDirection === 1")
 								i.fa.fa-sort-amount-desc(v-if="unassignedSort === method.name && unassignedSortDirection === -1")
-					session.new-break(:session="{title: '+ ' + translations.newBreak}", :isDragged="false", tabindex="0", @startDragging="startNewBreak", @click.stop="showNewBreakHint", @focus="showNewBreakHint", @blur="removeNewBreakHint", @keydown="onNewBreakKeydown", @pointerleave="removeNewBreakHint", :aria-describedby="newBreakTooltip ? 'new-break-hint' : undefined")
+					session.new-break(v-if="caps.canCreateBreak", :session="{title: '+ ' + translations.newBreak}", :isDragged="false", tabindex="0", @startDragging="startNewBreak", @click.stop="showNewBreakHint", @focus="showNewBreakHint", @blur="removeNewBreakHint", @keydown="onNewBreakKeydown", @pointerleave="removeNewBreakHint", :aria-describedby="newBreakTooltip ? 'new-break-hint' : undefined")
 					.new-break-hint(v-if="newBreakTooltip", id="new-break-hint", role="tooltip") {{ newBreakTooltip }}
 				session(v-for="un in unscheduled", :key="un.id", :session="un", @startDragging="startDragging", :isDragged="draggedSession && un.id === draggedSession.id", @editSession="editorStart($event)", @deleteSession="deleteSessionDirect($event)", @assignMembers="openAssignModal($event)")
 				.deleted-room-sessions(v-if="deletedRoomSessions.length")
@@ -46,23 +46,23 @@
 					:currentDay="currentDay",
 					:draggedSession="draggedSession",
 					@changeDay="changeDay",
-					@startDragging="isPublicShiftsMode ? null : startDragging($event)",
-					@rescheduleSession="isPublicShiftsMode ? null : rescheduleSession($event)",
-					@createSession="isPublicShiftsMode ? null : createSession($event)",
-					@editSession="isPublicShiftsMode ? null : editorStart($event)",
-					@deleteSession="isPublicShiftsMode ? null : deleteSessionDirect($event)",
-					@assignMembers="isPublicShiftsMode ? null : openAssignModal($event)")
-			#session-editor-wrapper(v-if="editorSession && !isPublicShiftsMode", @click="editorSession = null")
+					@startDragging="caps.canDrag ? startDragging($event) : null",
+					@rescheduleSession="caps.canDrag ? rescheduleSession($event) : null",
+					@createSession="caps.canEdit ? createSession($event) : null",
+					@editSession="caps.canEdit ? editorStart($event) : null",
+					@deleteSession="caps.canDelete ? deleteSessionDirect($event) : null",
+					@assignMembers="caps.canAssignMembers ? openAssignModal($event) : null")
+			#session-editor-wrapper(v-if="editorSession && caps.canEdit", @click="editorSession = null")
 				form#session-editor(@click.stop="", @submit.prevent="editorSave")
 					h3.session-editor-title(v-if="editorSession.code")
-						a(v-if="organizerSlug && eventSlug", :href="`${api.getOrgaEventBase()}/submissions/${editorSession.code}/`") {{ getLocalizedString(editorSession.title) }}
+						a(v-if="caps.showSubmissionLinks && organizerSlug && eventSlug", :href="`${api.getOrgaEventBase()}/submissions/${editorSession.code}/`") {{ getLocalizedString(editorSession.title) }}
 						span(v-else) {{ getLocalizedString(editorSession.title) }}
 					.data
-						.data-row(v-if="editorSession.code && editorSession.speakers && editorSession.speakers.length > 0 && !isShiftsMode").form-group.row
+						.data-row(v-if="editorSession.code && editorSession.speakers && editorSession.speakers.length > 0 && caps.showSpeakers").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Speakers') }}
 							.col-md-9.data-value
 								span(v-for="speaker, index of editorSession.speakers")
-									a(v-if="organizerSlug && eventSlug && speaker.code", :href="`${api.getOrgaEventBase()}/speakers/${speaker.code}/`") {{ speaker.name || speaker.code }}
+									a(v-if="caps.showSubmissionLinks && organizerSlug && eventSlug && speaker.code", :href="`${api.getOrgaEventBase()}/speakers/${speaker.code}/`") {{ speaker.name || speaker.code }}
 									span(v-else) {{ speaker.name }}
 									span(v-if="index != editorSession.speakers.length - 1") {{', '}}
 								span.text-warning(v-if="editorSession.speakers.some(s => !s.name)")  ({{ $t('some speakers have not shared their names') }})
@@ -72,7 +72,7 @@
 								.i18n-form-group
 									template(v-for="locale of locales")
 										input.form-control(v-model="editorSession.title[locale]", :required="true", :lang="locale", type="text")
-						.data-row(v-if="editorSession.track && !isShiftsMode").form-group.row
+						.data-row(v-if="editorSession.track && caps.showTracks").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Track') }}
 							.col-md-9.data-value {{ getLocalizedString(editorSession.track.name) }}
 						.data-row(v-if="editorSession.room").form-group.row
@@ -84,7 +84,7 @@
 								input.form-control(v-model="editorSession.duration", type="number", min="1", max="1440", step="1", :required="true")
 								.input-group-append
 									span.input-group-text {{ $t('minutes') }}
-						.data-row(v-if="isShiftsMode").form-group.row
+						.data-row(v-if="caps.canEditRoles").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Roles') }}
 							.col-md-9
 								.role-row(v-for="(r, index) in editorSession.roles" :key="index")
@@ -109,10 +109,10 @@
 								span(v-else) {{ warnings[editorSession.code][0].message }}
 					.button-row
 						input(type="submit")
-						bunt-button#btn-delete(v-if="isShiftsMode ? editorSession.id : !editorSession.code", @click="editorDelete", :loading="editorSessionWaiting") {{ $t('Delete') }}
+						bunt-button#btn-delete(v-if="caps.canEditRoles ? editorSession.id : !editorSession.code", @click="editorDelete", :loading="editorSessionWaiting") {{ $t('Delete') }}
 						bunt-button#btn-save(@click="editorSave", :loading="editorSessionWaiting") {{ $t('Save') }}
 			
-			#assign-modal-wrapper(v-if="assigningSession && !isPublicShiftsMode", @click="closeAssignModal")
+			#assign-modal-wrapper(v-if="assigningSession && caps.canAssignMembers", @click="closeAssignModal")
 				#session-editor(@click.stop="")
 					h3.session-editor-title
 						span {{ $t('Assign Members for ') }} {{ getLocalizedString(assigningSession.title) }}
@@ -147,7 +147,9 @@ import { ref, reactive, computed, onMounted, onUnmounted, onBeforeMount, nextTic
 import moment, { Moment } from 'moment-timezone'
 import GridSchedule from '~/components/GridSchedule.vue'
 import Session from '~/components/Session.vue'
-import api, { isShiftsMode as checkShiftsMode, isPublicShiftsMode as checkPublicShiftsMode } from '~/api'
+import api from '~/api'
+import { resolveMode, getCapabilities } from '~/adapters'
+import type { Capabilities } from '~/adapters/types'
 import { getLocalizedString } from '~/utils'
 import type { AvailabilityEntry, RoleAssignment, ScheduleRole } from '~/schemas';
 
@@ -158,7 +160,7 @@ interface Speaker {
 
 interface Track {
   id: string | number
-  name: Record<string, string> // localized names
+  name: Record<string, string>
 }
 
 interface Room {
@@ -236,6 +238,9 @@ const props = defineProps<{
   locale: string
 }>()
 
+const mode = resolveMode()
+const caps: Capabilities = getCapabilities(mode)
+
 const eventSlug = ref<string | null>(null)
 const organizerSlug = ref<string | null>(null)
 const scrollParentWidth = ref<number>(Infinity)
@@ -265,15 +270,10 @@ const since = ref<string | undefined>(undefined)
 const showTimeDensityMenu = ref<boolean>(false)
 const customDropdownRef = ref<HTMLElement | null>(null)
 
-const isShiftsMode = computed(() => checkShiftsMode())
-const isPublicShiftsMode = computed(() => checkPublicShiftsMode())
-
 const condensedView = ref<boolean>(localStorage.getItem('schedule-editor-condensed') === '1')
 const timeDensityMinutes = ref<number>(Number(localStorage.getItem('schedule-time-density-minutes') || 30))
 
 const gridDensity = computed<'compact' | 'default' | 'comfortable'>(() => {
-  // Condensed view only affects how dense the grid looks (zoom/spacing).
-  // Time density only affects how the schedule timeslices are generated.
   return condensedView.value ? 'compact' : 'default'
 })
 
@@ -291,7 +291,7 @@ function $t(key: string): string {
 }
 
 const translations = computed(() => ({
-  filterSessions: isShiftsMode.value ? $t('Filter shifts') : $t('Filter sessions'),
+  filterSessions: caps.showRoles ? $t('Filter shifts') : $t('Filter sessions'),
   newBreak: $t('New break'),
 }))
 
@@ -299,7 +299,6 @@ function lookupKey(value?: string | number | null): string {
   return value == null ? '' : String(value)
 }
 
-// Lookups
 const roomsLookup = computed<Record<string, Room>>(() => {
   if (!schedule.value) return {}
   return schedule.value.rooms.reduce((acc, room) => {
@@ -333,22 +332,20 @@ function resolveSessionSpeakers(speakers?: string[]): Speaker[] {
     .filter((speaker): speaker is Speaker => Boolean(speaker))
 }
 
-// Sort methods for unassigned sessions
 const unassignedSortMethods = computed<SortMethod[]>(() => {
   const sortMethods: SortMethod[] = [
     { label: $t('Title'), name: 'title' },
   ]
-  if (!isShiftsMode.value) {
+  if (caps.showSpeakers) {
     sortMethods.push({ label: $t('Speakers'), name: 'speakers' })
   }
-  if (schedule.value && schedule.value.tracks.length > 1 && !isShiftsMode.value) {
+  if (schedule.value && schedule.value.tracks.length > 1 && caps.showTracks) {
     sortMethods.push({ label: $t('Track'), name: 'track' })
   }
   sortMethods.push({ label: $t('Duration'), name: 'duration' })
   return sortMethods
 })
 
-// Sessions without start (unassigned)
 const unscheduled = computed<SessionData[]>(() => {
   if (!schedule.value) return []
   let sessions: SessionData[] = []
@@ -464,8 +461,6 @@ const days = computed<Moment[]>(() => {
   let firstDay = moment(schedule.value.event_start).startOf('day')
   let lastDay = moment(schedule.value.event_end).startOf('day')
 
-  // Keep editor tabs aligned with real talk dates as well, since imported
-  // schedules may contain talks outside the event date window.
   const startedTalks = schedule.value.talks
     .map((talk) => talk.start)
     .filter((start): start is string => typeof start === 'string')
@@ -584,7 +579,7 @@ async function createSession(e: CreateSessionEvent): Promise<void> {
 
 function editorStart(session: SessionData | Talk): void {
   const newEditorSession = { ...session } as SessionData
-  if (isShiftsMode.value) {
+  if (caps.canEditRoles) {
     if (!newEditorSession.roles || newEditorSession.roles.length === 0) {
       newEditorSession.roles = [{ id: undefined, capacity: 1 }]
     } else {
@@ -621,7 +616,7 @@ async function editorSave(): Promise<void> {
     state: editorSession.value.state
   }
 
-  if (isShiftsMode.value) {
+  if (caps.canEditRoles) {
     talk.roles = editorSession.value.roles?.filter((r) => r.id !== undefined)
   }
   
@@ -635,7 +630,7 @@ async function editorSave(): Promise<void> {
     }
   }
   
-  if (isShiftsMode.value) {
+  if (caps.showRoles) {
     schedule.value = await fetchSchedule()
   }
   
@@ -707,7 +702,6 @@ async function assignMember(roleId: number): Promise<void> {
   try {
     await api.assignMember(Number(assigningSession.value.id), roleId, selectedMemberId)
     
-    // Refresh schedule data and update assigningSession
     const sched = await fetchSchedule({ warnings: true })
     if (schedule.value) {
       schedule.value.talks = sched.talks
@@ -732,7 +726,6 @@ async function unassignMember(roleId: number, userId: number): Promise<void> {
   try {
     await api.unassignMember(Number(assigningSession.value.id), roleId, userId)
     
-    // Refresh schedule data and update assigningSession
     const sched = await fetchSchedule({ warnings: true })
     if (schedule.value) {
       schedule.value.talks = sched.talks

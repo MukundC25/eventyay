@@ -1,129 +1,83 @@
-import { 
-  ScheduleSchema, 
-  AvailabilitySchema, 
-  WarningsSchema, 
+import {
+  ScheduleSchema,
+  AvailabilitySchema,
+  WarningsSchema,
   TalkSchema,
-  Talk,
-  Schedule,
-  Availability,
-  Warnings
-} from './schemas';
-import moment, { type Moment } from 'moment';
+  type Talk,
+  type Schedule,
+  type Availability,
+  type Warnings,
+} from './schemas'
+import moment, { type Moment } from 'moment'
+import {
+  resolveMode,
+  getApiConfig,
+  getCsrfToken,
+  getClaimedShiftIds as adapterGetClaimedShiftIds,
+  getClaimBaseUrl as adapterGetClaimBaseUrl,
+} from './adapters'
 
-const basePath = process.env.BASE_PATH || '';
-
-function getAppMode(): string {
-  if (typeof window === 'undefined') return '';
-  const appElement = document.querySelector('#app') as HTMLElement | null;
-  return appElement?.dataset?.mode ?? '';
-}
-
-function getOrgaEventBase() {
-  if (typeof window === 'undefined') return '';
-  const mode = getAppMode();
-  if (mode === 'public-shifts') {
-    const match = window.location.pathname.match(/\/([^/]+)\/([^/]+)\/teamshifts\//);
-    if (!match) throw new Error('Public shift schedule must be loaded under /<organizer>/<event>/teamshifts/');
-    return `${basePath}/${match[1]}/${match[2]}/teamshifts`;
-  }
-  const isShifts = isShiftsMode();
-  const modePrefix = isShifts ? '/teamshifts' : '/orga';
-  const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
-  if (!match) {
-    throw new Error(`Schedule editor must be loaded under ${modePrefix}/event/<organizer>/<event>/`);
-  }
-  return `${basePath}${modePrefix}/event/${match[1]}/${match[2]}`;
-}
-
-export function isShiftsMode(): boolean {
-  if (typeof window === 'undefined') return false;
-  const mode = getAppMode();
-  if (mode === 'shifts' || mode === 'public-shifts') return true;
-  return window.location.pathname.includes('/teamshifts/');
-}
-
-export function isPublicShiftsMode(): boolean {
-  if (typeof window === 'undefined') return false;
-  return getAppMode() === 'public-shifts';
-}
-
-export function getClaimedShiftIds(): Set<number> {
-  const appElement = document.querySelector('#app') as HTMLElement | null;
-  const raw = appElement?.dataset?.claimedShifts ?? '';
-  if (!raw) return new Set();
-  try {
-    return new Set(JSON.parse(raw) as number[]);
-  } catch {
-    return new Set();
-  }
-}
-
-export function getCsrfToken(): string {
-  const appElement = document.querySelector('#app') as HTMLElement | null;
-  return appElement?.dataset?.csrfToken ?? '';
-}
-
-export function getClaimBaseUrl(): string {
-  const appElement = document.querySelector('#app') as HTMLElement | null;
-  return appElement?.dataset?.claimBaseUrl ?? '';
-}
+export { resolveMode as getAppMode } from './adapters'
+export { getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from './adapters'
 
 const calculateDuration = (start?: string, end?: string): number | undefined => {
-  if (!start || !end) return undefined;
+  if (!start || !end) return undefined
   try {
-    const startTime = new Date(start).getTime();
-    const endTime = new Date(end).getTime();
-    return (endTime - startTime) / (1000 * 60);
+    const startTime = new Date(start).getTime()
+    const endTime = new Date(end).getTime()
+    return (endTime - startTime) / (1000 * 60)
   } catch {
-    return undefined;
+    return undefined
   }
-};
-
-interface TalkPayload {
-  id?: number;
-  code?: string;
-  title?: string | Record<string, string>;
-  description?: string | Record<string, string>;
-  room?: string | number | { id: string | number };
-  start?: string;
-  end?: string;
-  duration?: number;
-  role?: string | number;
-  capacity?: number;
-  roles?: { id: string | number; capacity: number }[];
 }
 
-// Define specific types for HTTP request bodies
-type HttpRequestBody = Record<string, unknown> | string | null;
+interface TalkPayload {
+  id?: number
+  code?: string
+  title?: string | Record<string, string>
+  description?: string | Record<string, string>
+  room?: string | number | { id: string | number }
+  start?: string
+  end?: string
+  duration?: number
+  role?: string | number
+  capacity?: number
+  roles?: { id: string | number; capacity: number }[]
+}
+
+type HttpRequestBody = Record<string, unknown> | string | null
 
 interface MembersResponse {
-  members: { id: number; name: string; email: string }[];
+  members: { id: number; name: string; email: string }[]
 }
 
 interface AssignmentResponse {
-  status: string;
+  status: string
 }
 
 const api = {
-  getOrgaEventBase,
-  get organizerSlug() {
-    if (typeof window === 'undefined') return null;
-    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
-    return match ? match[1] : null;
+  getOrgaEventBase(): string {
+    return getApiConfig().baseUrl
   },
-  
-  get eventSlug() {
-    if (typeof window === 'undefined') return null;
-    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/);
-    return match ? match[2] : null;
+
+  get organizerSlug(): string | null {
+    if (typeof window === 'undefined') return null
+    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/)
+    return match ? match[1] : null
   },
-  
+
+  get eventSlug(): string | null {
+    if (typeof window === 'undefined') return null
+    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/)
+    return match ? match[2] : null
+  },
+
   async http<T>(verb: string, url: string, body: HttpRequestBody): Promise<T> {
-    const headers: Record<string, string> = {};
-    if (body) headers['Content-Type'] = 'application/json';
+    const headers: Record<string, string> = {}
+    if (body) headers['Content-Type'] = 'application/json'
     if (verb !== 'GET') {
-      const csrfToken = getCsrfToken();
-      if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+      const csrfToken = getCsrfToken()
+      if (csrfToken) headers['X-CSRFToken'] = csrfToken
     }
 
     const options: RequestInit = {
@@ -131,78 +85,72 @@ const api = {
       headers,
       body: body ? JSON.stringify(body) : undefined,
       credentials: 'include',
-    };
-    
-    const response = await fetch(url, options);
-    
+    }
+
+    const response = await fetch(url, options)
+
     if (response.status === 204) {
-      return undefined as unknown as T;
+      return undefined as unknown as T
     }
-    
-    const json = await response.json();
-    
+
+    const json = await response.json()
+
     if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}: ${JSON.stringify(json)}`);
+      throw new Error(`HTTP error ${response.status}: ${JSON.stringify(json)}`)
     }
-    
-    return json as T;
+
+    return json as T
   },
 
   async fetchTalks(options?: { since?: string; warnings?: boolean }): Promise<Schedule> {
-    const mode = getAppMode();
-    let endpoint: string;
-    let url: string;
-    if (mode === 'public-shifts') {
-      endpoint = 'shifts/api/';
-      url = `${getOrgaEventBase()}/${endpoint}`;
-    } else {
-      endpoint = isShiftsMode() ? '/schedule/api/shifts/' : '/schedule/api/talks/';
-      url = `${getOrgaEventBase()}${endpoint}`;
-    }
-    const params = new URLSearchParams(window.location.search);
-    if (options?.since) params.append('since', options.since);
-    if (options?.warnings) params.append('warnings', 'true');
-    const paramsString = params.toString();
+    const config = getApiConfig()
+    let url = `${config.baseUrl}${config.endpoints.talks}`
+
+    const params = new URLSearchParams(window.location.search)
+    if (options?.since) params.append('since', options.since)
+    if (options?.warnings) params.append('warnings', 'true')
+    const paramsString = params.toString()
     if (paramsString) {
-      url += `?${paramsString}`;
+      url += `?${paramsString}`
     }
-    
-    const data = await this.http<Schedule>('GET', url, null);
-    return ScheduleSchema.parse(data);
+
+    const data = await this.http<Schedule>('GET', url, null)
+    return ScheduleSchema.parse(data)
   },
 
   async fetchAvailabilities(): Promise<Availability> {
-    const url = `${getOrgaEventBase()}/schedule/api/availabilities/`;
-    const data = await this.http<Availability>('GET', url, null);
-    return AvailabilitySchema.parse(data);
+    const config = getApiConfig()
+    const url = `${config.baseUrl}${config.endpoints.availabilities}`
+    const data = await this.http<Availability>('GET', url, null)
+    return AvailabilitySchema.parse(data)
   },
 
   async fetchWarnings(): Promise<Warnings> {
-    const url = `${getOrgaEventBase()}/schedule/api/warnings/`;
-    const data = await this.http<Warnings>('GET', url, null);
-    return WarningsSchema.parse(data);
+    const config = getApiConfig()
+    const url = `${config.baseUrl}${config.endpoints.warnings}`
+    const data = await this.http<Warnings>('GET', url, null)
+    return WarningsSchema.parse(data)
   },
 
-  async saveTalk(talk: TalkPayload,{ action = 'PATCH' }: { action?: string } = {}): Promise<Talk | void> {
-    const endpoint = isShiftsMode() ? '/schedule/api/shifts/' : '/schedule/api/talks/';
-    const talksBase = `${getOrgaEventBase()}${endpoint}`;
-    const urlPath = talk.id ? `${talksBase}${talk.id}/` : talksBase;
-    const params = new URLSearchParams(window.location.search);
-    const url = params.toString() ? `${urlPath}?${params.toString()}` : urlPath;
+  async saveTalk(talk: TalkPayload, { action = 'PATCH' }: { action?: string } = {}): Promise<Talk | void> {
+    const config = getApiConfig()
+    const talksBase = `${config.baseUrl}${config.endpoints.talks}`
+    const urlPath = talk.id ? `${talksBase}${talk.id}/` : talksBase
+    const params = new URLSearchParams(window.location.search)
+    const url = params.toString() ? `${urlPath}?${params.toString()}` : urlPath
 
-    let payload: HttpRequestBody = null;
+    let payload: HttpRequestBody = null
     if (action !== 'DELETE') {
-      const roomId = typeof talk.room === 'object' ? talk.room.id : talk.room;
-      const duration = talk.duration ?? calculateDuration(talk.start, talk.end);
-      
-      // RESTORED UTC CONVERSION - same as original JS version
+      const roomId = typeof talk.room === 'object' ? talk.room.id : talk.room
+      const duration = talk.duration ?? calculateDuration(talk.start, talk.end)
+
       const convertToUTC = (date: string | Moment | undefined): string | undefined => {
-        if (!date) return undefined;
-        return typeof date === 'string' 
+        if (!date) return undefined
+        return typeof date === 'string'
           ? moment(date).utc().format()
-          : date.utc().format();
-      };
-      
+          : date.utc().format()
+      }
+
       payload = {
         room: roomId,
         start: convertToUTC(talk.start),
@@ -210,49 +158,52 @@ const api = {
         duration,
         title: talk.title,
         description: talk.description,
-      };
-      
-      if (isShiftsMode()) {
-        payload.roles = talk.roles;
+      }
+
+      if (resolveMode() !== 'talks') {
+        payload.roles = talk.roles
       }
     }
-    
-    const response = await this.http<Talk>(action, url, payload);
-    
+
+    const response = await this.http<Talk>(action, url, payload)
+
     if (action !== 'DELETE') {
-      if (isShiftsMode()) {
-        return response;
+      if (resolveMode() !== 'talks') {
+        return response
       }
-      return TalkSchema.parse(response);
+      return TalkSchema.parse(response)
     }
   },
 
   async deleteTalk(talk: { id: number }): Promise<void> {
-    await this.saveTalk({ id: talk.id }, { action: 'DELETE' });
+    await this.saveTalk({ id: talk.id }, { action: 'DELETE' })
   },
 
   async createTalk(talk: Omit<TalkPayload, 'id'>): Promise<Talk> {
-    const response = await this.saveTalk(talk, { action: 'POST' });
+    const response = await this.saveTalk(talk, { action: 'POST' })
     if (!response) {
-      throw new Error('Failed to create talk: No response from server');
+      throw new Error('Failed to create talk: No response from server')
     }
-    return response;
+    return response
   },
 
   async fetchMembers(roleId: number): Promise<MembersResponse> {
-    const url = `${getOrgaEventBase()}/schedule/api/members/?role=${roleId}`;
-    return this.http<MembersResponse>('GET', url, null);
+    const config = getApiConfig()
+    const url = `${config.baseUrl}${config.endpoints.members}?role=${roleId}`
+    return this.http<MembersResponse>('GET', url, null)
   },
 
   async assignMember(shiftId: number, roleId: number, userId: number): Promise<AssignmentResponse> {
-    const url = `${getOrgaEventBase()}/schedule/api/assignments/`;
-    return this.http<AssignmentResponse>('POST', url, { shift_id: shiftId, role_id: roleId, user_id: userId });
+    const config = getApiConfig()
+    const url = `${config.baseUrl}${config.endpoints.assignments}`
+    return this.http<AssignmentResponse>('POST', url, { shift_id: shiftId, role_id: roleId, user_id: userId })
   },
 
   async unassignMember(shiftId: number, roleId: number, userId: number): Promise<AssignmentResponse> {
-    const url = `${getOrgaEventBase()}/schedule/api/assignments/?shift_id=${shiftId}&role_id=${roleId}&user_id=${userId}`;
-    return this.http<AssignmentResponse>('DELETE', url, null);
+    const config = getApiConfig()
+    const url = `${config.baseUrl}${config.endpoints.assignments}?shift_id=${shiftId}&role_id=${roleId}&user_id=${userId}`
+    return this.http<AssignmentResponse>('DELETE', url, null)
   },
-};
+}
 
 export default api

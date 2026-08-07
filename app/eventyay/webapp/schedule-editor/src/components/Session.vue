@@ -8,13 +8,13 @@
 	.info
 		.title-row(style="display: flex; justify-content: space-between; align-items: flex-start;")
 			.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
-			.card-actions(v-if="isShiftsMode && !isPublicShiftsMode && !isBreak")
+			.card-actions(v-if="caps.showRoles && caps.canEdit && !isBreak")
 				button.btn.btn-link.p-0.mr-2(type="button", @pointerdown.stop, @click.stop="$emit('editSession', session)", :aria-label="$t('Edit')", :title="$t('Edit')")
 					i.fa.fa-pencil(aria-hidden="true")
 				button.btn.btn-link.p-0.text-danger(type="button", @pointerdown.stop, @click.stop="$emit('deleteSession', session)", :aria-label="$t('Delete')", :title="$t('Delete')")
 					i.fa.fa-trash(aria-hidden="true")
 		
-		template(v-if="isShiftsMode")
+		template(v-if="caps.showRoles")
 			.roles-list(v-if="session.roles && session.roles.length")
 				.role-item(v-for="role in session.roles", :key="role.id")
 					.role-header
@@ -28,7 +28,7 @@
 							| {{ user.name }}{{ i < role.assigned.length - 1 ? ', ' : '' }}
 						span.text-muted(v-if="!role.assigned.length") {{ $t('None') }}
 			
-			template(v-if="isPublicShiftsMode")
+			template(v-if="caps.showClaimUI")
 				.shift-manage.mt-2(v-if="!isBreak")
 					template(v-if="isMyClaimed")
 						span.role-badge.badge-full.mr-2 {{ $t('Signed up') }}
@@ -68,7 +68,8 @@
 import { computed } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import { getLocalizedString } from '~/utils'
-import { isShiftsMode as checkShiftsMode, isPublicShiftsMode as checkPublicShiftsMode, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/api'
+import { getCapabilities, resolveMode, resolveSessionKind, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/adapters'
+import type { Capabilities, SessionKind } from '~/adapters/types'
 import type { RoleAssignment } from '~/schemas'
 
 interface Speaker {
@@ -123,10 +124,11 @@ const emit = defineEmits<{
 }>()
 const isBreak = computed(() => props.session.code == null)
 
-const isShiftsMode = computed(() => checkShiftsMode())
-const isPublicShiftsMode = computed(() => checkPublicShiftsMode())
+const mode = resolveMode()
+const caps: Capabilities = getCapabilities(mode)
+const sessionKind = computed<SessionKind>(() => resolveSessionKind(mode, props.session))
 
-const claimedShiftIds = computed(() => isPublicShiftsMode.value ? getClaimedShiftIds() : new Set<number>())
+const claimedShiftIds = computed(() => caps.showClaimUI ? getClaimedShiftIds() : new Set<number>())
 const isMyClaimed = computed(() => claimedShiftIds.value.has(Number(props.session.id)))
 
 const hasClaimableSlot = computed(() => {
@@ -146,7 +148,7 @@ const withdrawUrl = computed(() => {
   return base ? `${base}${props.session.id}/withdraw/` : ''
 })
 
-const csrfToken = computed(() => isPublicShiftsMode.value ? getCsrfToken() : '')
+const csrfToken = computed(() => caps.showClaimUI ? getCsrfToken() : '')
 
 const getCapacityClass = (role: RoleAssignment) => {
   if (role.assigned.length >= role.capacity) return 'badge-full'
@@ -198,7 +200,7 @@ const classes = computed(() => {
 const style = computed(() => {
   let trackColor = props.session.track?.color || 'var(--color-primary)'
   
-  if (isShiftsMode.value && props.session.roles && props.session.roles.length > 0) {
+  if (caps.showRoles && props.session.roles && props.session.roles.length > 0) {
     let totalCapacity = 0
     let totalAssigned = 0
     for (const role of props.session.roles) {
