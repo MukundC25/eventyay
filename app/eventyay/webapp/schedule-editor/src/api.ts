@@ -62,13 +62,13 @@ const api = {
 
   get organizerSlug(): string | null {
     if (typeof window === 'undefined') return null
-    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/)
+    const match = window.location.pathname.match(/\/(?:orga|teamshifts)\/event\/([^/]+)\/([^/]+)/)
     return match ? match[1] : null
   },
 
   get eventSlug(): string | null {
     if (typeof window === 'undefined') return null
-    const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/)
+    const match = window.location.pathname.match(/\/(?:orga|teamshifts)\/event\/([^/]+)\/([^/]+)/)
     return match ? match[2] : null
   },
 
@@ -168,10 +168,10 @@ const api = {
     const response = await this.http<Talk>(action, url, payload)
 
     if (action !== 'DELETE') {
-      if (resolveMode() !== 'talks') {
-        return response
+      if (response && typeof response === 'object' && 'id' in response && 'title' in response) {
+        return TalkSchema.parse(response)
       }
-      return TalkSchema.parse(response)
+      return response
     }
   },
 

@@ -656,7 +656,7 @@ async function deleteSessionById(id: number): Promise<boolean> {
 
   editorSessionWaiting.value = true
   try {
-    await api.deleteTalk({ id } as any)
+    await api.deleteTalk({ id })
     if (schedule.value) {
       schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
     }
@@ -691,6 +691,7 @@ async function loadMembers(roleId: number): Promise<void> {
     availableMembersByRole.value[String(roleId)] = response.members ?? []
   } catch (error) {
     console.error('Failed to fetch members', error)
+    window.alert($t('Failed to load members. Please try again.'))
   }
 }
 
@@ -705,15 +706,18 @@ async function assignMember(roleId: number): Promise<void> {
     const sched = await fetchSchedule({ warnings: true })
     if (schedule.value) {
       schedule.value.talks = sched.talks
+      if (sched.roles) schedule.value.roles = sched.roles
       const updatedSession = sched.talks.find(t => t.id === assigningSession.value?.id)
       if (updatedSession) {
         assigningSession.value = { ...updatedSession } as SessionData
       }
     }
+    await fetchAdditionalScheduleData()
     await loadMembers(roleId)
     selectedMemberIds.value[String(roleId)] = undefined
   } catch (error) {
     console.error('Failed to assign member', error)
+    window.alert($t('Failed to assign member. Please try again.'))
   }
   assigningWaiting.value = false
 }
@@ -729,13 +733,16 @@ async function unassignMember(roleId: number, userId: number): Promise<void> {
     const sched = await fetchSchedule({ warnings: true })
     if (schedule.value) {
       schedule.value.talks = sched.talks
+      if (sched.roles) schedule.value.roles = sched.roles
       const updatedSession = sched.talks.find(t => t.id === assigningSession.value?.id)
       if (updatedSession) {
         assigningSession.value = { ...updatedSession } as SessionData
       }
     }
+    await fetchAdditionalScheduleData()
   } catch (error) {
     console.error('Failed to unassign member', error)
+    window.alert($t('Failed to unassign member. Please try again.'))
   }
   assigningWaiting.value = false
 }
@@ -794,7 +801,7 @@ async function stopDragging(): Promise<void> {
         }
       } else if (schedule.value?.talks.find((s) => s.id === draggedSession.value!.id)) {
         schedule.value.talks = schedule.value.talks.filter((s) => s.id !== draggedSession.value!.id)
-        await api.deleteTalk({ id: String(draggedSession.value.id) } as any)
+        await api.deleteTalk({ id: Number(draggedSession.value.id) })
         await fetchAdditionalScheduleData()
       }
     }
