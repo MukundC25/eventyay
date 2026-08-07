@@ -1,7 +1,14 @@
 {% extends "pretixcontrol/global_settings_base.html" %}
 {% load i18n %}
+{% load static %}
 
 {% block title %}{% trans "Global Plugin Management" %}{% endblock %}
+
+{% block custom_header %}
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'pretixcontrol/js/ui/global-plugins.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
   <h1>{% trans "Global Plugin Management" %}</h1>
   <p class="help-block">
@@ -11,7 +18,7 @@
   <form method="post" action="">
     {% csrf_token %}
     <div class="table-responsive">
-      <table class="table table-striped table-hover">
+      <table class="table table-striped table-hover" data-global-plugins-table>
         <thead>
           <tr>
             <th>{% trans "Plugin" %}</th>
@@ -22,7 +29,7 @@
         </thead>
         <tbody>
           {% for row in plugin_rows %}
-            <tr>
+            <tr data-plugin-row>
               <td>
                 <strong>{{ row.name }}</strong>
                 {% if row.version %}
@@ -36,20 +43,25 @@
               <td class="text-center">
                 <input type="checkbox"
                        name="is_active_{{ row.module }}"
+                       data-col="active"
                        aria-label="{% trans 'Active' %}: {{ row.name }}"
                        {% if row.is_active %}checked{% endif %}>
               </td>
               <td class="text-center">
                 <input type="checkbox"
                        name="enable_by_default_{{ row.module }}"
+                       data-col="enable_by_default"
                        aria-label="{% trans 'Enable by default' %}: {{ row.name }}"
-                       {% if row.enable_by_default %}checked{% endif %}>
+                       {% if row.enable_by_default and row.is_active %}checked{% endif %}
+                       {% if not row.is_active %}disabled{% endif %}>
               </td>
               <td class="text-center">
                 <input type="checkbox"
                        name="show_in_organizer_list_{{ row.module }}"
+                       data-col="show_in_organizer_list"
                        aria-label="{% trans 'Show in organizer plugin list' %}: {{ row.name }}"
-                       {% if row.show_in_organizer_list %}checked{% endif %}>
+                       {% if row.show_in_organizer_list and row.is_active %}checked{% endif %}
+                       {% if not row.is_active %}disabled{% endif %}>
               </td>
             </tr>
           {% empty %}

@@ -8,7 +8,7 @@ from django.apps import apps
 from django.conf import settings
 from django.dispatch.dispatcher import NO_RECEIVERS
 
-from .models import Event
+from .models import Event, GlobalPluginConfig
 
 
 app_cache = {}
@@ -128,18 +128,17 @@ class EventPluginSignal(django.dispatch.Signal):
 
     def _is_active(self, sender, receiver):
         if sender is None:
-            # Send to all events!
             return True
 
-        # Find the Django application this belongs to
         module_path = receiver.__module__
         is_core_module = any(module_path.startswith(cm) for cm in settings.CORE_MODULES)
 
-        # Resolve the app using thread-safe cached function
         app = resolve_app_for_module(module_path)
 
-        # Use shared helper to check if receiver should be active
-        # EVENTYAY_PLUGINS_EXCLUDE is always a tuple, guaranteed by Pydantic
+        if app and not is_core_module:
+            if app.name in GlobalPluginConfig.get_disabled_modules():
+                return False
+
         return check_plugin_active(sender, app, is_core_module, settings.EVENTYAY_PLUGINS_EXCLUDE, lambda s: s.get_plugins())
 
     def send(self, sender: Event, **named) -> list[tuple[Callable, Any]]:

@@ -19,7 +19,7 @@ from python_http_client.exceptions import HTTPError
 
 from eventyay.api.models import OAuthApplication
 from eventyay.base.email import CustomSMTPBackend, SendGridEmail
-from eventyay.base.models import GlobalPluginConfig, LogEntry, OrderPayment, OrderRefund
+from eventyay.base.models import Event, GlobalPluginConfig, LogEntry, OrderPayment, OrderRefund
 from eventyay.base.plugins import get_all_plugins
 from eventyay.base.services.mail import get_mail_backend
 from eventyay.base.services.update_check import check_result_table, update_check
@@ -368,11 +368,17 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
     def post(self, request, *args, **kwargs):
         all_plugins = get_all_plugins(include_inactive=True)
         known_modules = {p.module for p in all_plugins}
+        newly_disabled = set()
 
         for module in known_modules:
             is_active = request.POST.get(f'is_active_{module}') == 'on'
             enable_by_default = request.POST.get(f'enable_by_default_{module}') == 'on'
             show_in_organizer_list = request.POST.get(f'show_in_organizer_list_{module}') == 'on'
+
+            if not is_active:
+                enable_by_default = False
+                show_in_organizer_list = False
+                newly_disabled.add(module)
 
             GlobalPluginConfig.objects.update_or_create(
                 module=module,
@@ -383,8 +389,20 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
                 },
             )
 
+        if newly_disabled:
+            self._strip_disabled_from_events(newly_disabled)
+
         messages.success(request, _('Plugin settings have been saved.'))
         return redirect(reverse('eventyay_admin:admin.global.plugins'))
+
+    @staticmethod
+    def _strip_disabled_from_events(disabled_modules: set[str]):
+        for event in Event.objects.exclude(plugins='').exclude(plugins__isnull=True).iterator():
+            current = [p for p in event.plugins.split(',') if p]
+            filtered = [p for p in current if p not in disabled_modules]
+            if len(filtered) != len(current):
+                event.plugins = ','.join(filtered)
+                event.save(update_fields=['plugins'])
 
 
 class PaymentDetailView(AdministratorPermissionRequiredMixin, View):
