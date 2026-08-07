@@ -135,7 +135,7 @@ class EventPluginSignal(django.dispatch.Signal):
 
         app = resolve_app_for_module(module_path)
 
-        if app and not is_core_module:
+        if app and hasattr(app, 'EventyayPluginMeta'):
             if app.name in GlobalPluginConfig.get_disabled_modules():
                 return False
 
