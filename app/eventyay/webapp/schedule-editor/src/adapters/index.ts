@@ -92,7 +92,7 @@ export function getApiConfig(mode?: Mode): ApiConfig {
 
   const match = window.location.pathname.match(/\/event\/([^/]+)\/([^/]+)/)
   if (!match) {
-    throw new Error('Schedule editor must be loaded under /event/<organizer>/<event>/')
+    throw new Error('Schedule editor must be loaded under /orga/event/<organizer>/<event>/ or /teamshifts/event/<organizer>/<event>/')
   }
 
   const prefix = m === 'shifts' ? '/teamshifts' : '/orga'

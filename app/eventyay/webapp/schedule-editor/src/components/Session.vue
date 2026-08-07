@@ -23,7 +23,7 @@
 							span.role-restricted-tag(v-if="role.is_restricted", :title="$t('Volunteers cannot self-claim this role; requires manual assignment.')") {{ $t('Restricted') }}
 						span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} {{ $t('assigned') }}
 					.role-assignees
-						span(v-for="(user, i) in role.assigned")
+						span(v-for="(user, i) in role.assigned", :key="user.id")
 							i.fa.fa-user.mr-1
 							| {{ user.name }}{{ i < role.assigned.length - 1 ? ', ' : '' }}
 						span.text-muted(v-if="!role.assigned.length") {{ $t('None') }}
@@ -69,7 +69,7 @@ import { computed } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import { getLocalizedString } from '~/utils'
 import { getCapabilities, resolveMode, resolveSessionKind, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/adapters'
-import type { Capabilities, SessionKind } from '~/adapters/types'
+import type { Capabilities } from '~/adapters/types'
 import type { RoleAssignment } from '~/schemas'
 
 interface Speaker {
@@ -122,12 +122,10 @@ const emit = defineEmits<{
   (e: 'deleteSession', payload: Session): void
   (e: 'assignMembers', payload: Session): void
 }>()
-const isBreak = computed(() => props.session.code == null)
+const isBreak = computed(() => resolveSessionKind(mode, props.session) === 'break')
 
 const mode = resolveMode()
 const caps: Capabilities = getCapabilities(mode)
-const sessionKind = computed<SessionKind>(() => resolveSessionKind(mode, props.session))
-
 const claimedShiftIds = computed(() => caps.showClaimUI ? getClaimedShiftIds() : new Set<number>())
 const isMyClaimed = computed(() => claimedShiftIds.value.has(Number(props.session.id)))
 
