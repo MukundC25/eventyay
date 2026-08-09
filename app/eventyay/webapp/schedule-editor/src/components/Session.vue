@@ -8,7 +8,7 @@
 	.info
 		.title-row(style="display: flex; justify-content: space-between; align-items: flex-start;")
 			.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
-			.card-actions(v-if="caps.showRoles && caps.canEdit && !isBreak")
+			.card-actions(v-if="caps.showRoles && caps.canEdit && !isBreak && session.room")
 				button.btn.btn-link.p-0.mr-2(type="button", @pointerdown.stop, @click.stop="$emit('editSession', session)", :aria-label="$t('Edit')", :title="$t('Edit')")
 					i.fa.fa-pencil(aria-hidden="true")
 				button.btn.btn-link.p-0.text-danger(type="button", @pointerdown.stop, @click.stop="$emit('deleteSession', session)", :aria-label="$t('Delete')", :title="$t('Delete')")
