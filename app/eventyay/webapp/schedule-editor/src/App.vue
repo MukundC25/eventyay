@@ -148,8 +148,8 @@ import moment, { Moment } from 'moment-timezone'
 import GridSchedule from '~/components/GridSchedule.vue'
 import Session from '~/components/Session.vue'
 import api from '~/api'
-import { resolveMode, getCapabilities } from '~/adapters'
-import type { Capabilities } from '~/adapters/types'
+import { resolveMode, getCapabilities } from '~/teamshifts-adapter'
+import type { Capabilities } from '~/teamshifts-adapter/types'
 import { getLocalizedString } from '~/utils'
 import type { AvailabilityEntry, RoleAssignment, ScheduleRole } from '~/schemas';
 

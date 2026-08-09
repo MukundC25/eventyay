@@ -151,4 +151,4 @@ export type Warnings = z.infer<typeof WarningsSchema>;
 export type AssignedUser = z.infer<typeof AssignedUserSchema>;
 export type RoleAssignment = z.infer<typeof RoleAssignmentSchema>;
 export type ScheduleRole = z.infer<typeof ScheduleRoleSchema>;
-export type { SessionKind } from './adapters/types';
+export type { SessionKind } from './teamshifts-adapter/types';

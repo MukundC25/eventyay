@@ -68,8 +68,8 @@
 import { computed } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import { getLocalizedString } from '~/utils'
-import { getCapabilities, resolveMode, resolveSessionKind, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/adapters'
-import type { Capabilities } from '~/adapters/types'
+import { getCapabilities, resolveMode, resolveSessionKind, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/teamshifts-adapter'
+import type { Capabilities } from '~/teamshifts-adapter/types'
 import type { RoleAssignment } from '~/schemas'
 
 interface Speaker {

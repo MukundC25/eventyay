@@ -13,10 +13,10 @@ import {
   resolveMode,
   getApiConfig,
   getCsrfToken,
-} from './adapters'
+} from './teamshifts-adapter'
 
-export { resolveMode as getAppMode } from './adapters'
-export { getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from './adapters'
+export { resolveMode as getAppMode } from './teamshifts-adapter'
+export { getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from './teamshifts-adapter'
 
 const calculateDuration = (start?: string, end?: string): number | undefined => {
   if (!start || !end) return undefined
