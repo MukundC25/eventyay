@@ -45,12 +45,14 @@ class TeamForm(forms.ModelForm):
 
         self.teamshifts_plugin_enabled = has_teamshifts
         if has_teamshifts:
-            TeamRole = apps.get_model('teamshifts', 'TeamRole')
-            roles_qs = (
-                TeamRole.objects.filter(event__organizer=organizer)
-                .select_related('event')
-                .order_by('-event__date_from', 'name')
-            )
+            from django_scopes import scopes_disabled as _sd
+            with _sd():
+                TeamRole = apps.get_model('teamshifts', 'TeamRole')
+                roles_qs = (
+                    TeamRole.objects.filter(event__organizer=organizer)
+                    .select_related('event')
+                    .order_by('-event__date_from', 'name')
+                )
             self.fields['limit_teamshifts_roles'] = SafeModelMultipleChoiceField(
                 queryset=roles_qs,
                 required=False,
@@ -58,6 +60,7 @@ class TeamForm(forms.ModelForm):
                     attrs={'class': 'scrolling-multiple-choice scrolling-multiple-choice-large'}
                 ),
             )
+            self.fields['limit_teamshifts_roles'].queryset = roles_qs
             self._events_with_teamshifts_roles = self._build_events_with_tracks(organizer.events.all(), roles_qs)
 
             if self.instance and self.instance.pk:
