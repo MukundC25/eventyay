@@ -205,7 +205,15 @@ class TeamForm(forms.ModelForm):
 
     @scopes_disabled()
     def save(self, *args, **kwargs):
-        return super().save(*args, **kwargs)
+        if 'limit_teamshifts_roles' in self.cleaned_data:
+            self.instance.limit_teamshifts_roles = self.cleaned_data['limit_teamshifts_roles']
+        limit_field = self.fields.pop('limit_teamshifts_roles', None)
+        try:
+            instance = super().save(*args, **kwargs)
+        finally:
+            if limit_field is not None:
+                self.fields['limit_teamshifts_roles'] = limit_field
+        return instance
 
     def clean(self):
         data = super().clean()
