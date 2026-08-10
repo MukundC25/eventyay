@@ -67,6 +67,17 @@ class TeamForm(forms.ModelForm):
                 self.initial['limit_teamshifts_roles'] = self.instance.limit_teamshifts_roles
         else:
             self._events_with_teamshifts_roles = []
+            teamshifts_fields = [
+                'can_teamshifts_manage_applicants',
+                'can_teamshifts_create_shifts',
+                'can_teamshifts_create_roles',
+                'can_teamshifts_send_emails',
+                'can_teamshifts_view_email_addresses',
+                'all_teamshifts_roles',
+            ]
+            for f in teamshifts_fields:
+                if f in self.fields:
+                    del self.fields[f]
 
     @staticmethod
     def _build_events_with_tracks(events_qs, tracks_qs):
@@ -140,7 +151,12 @@ class TeamForm(forms.ModelForm):
         """Return a set of currently selected teamshifts role PKs for pre-checking checkboxes."""
         if self.is_bound:
             field_name = self.add_prefix('limit_teamshifts_roles')
-            values = self.data.getlist(field_name)
+            if hasattr(self.data, 'getlist'):
+                values = self.data.getlist(field_name)
+            else:
+                values = self.data.get(field_name, [])
+                if not isinstance(values, list):
+                    values = [values] if values else []
             try:
                 return {int(v) for v in values}
             except (ValueError, TypeError):
