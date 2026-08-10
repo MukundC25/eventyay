@@ -83,3 +83,4 @@ app/eventyay/data
 # Local plugins directory for development
 /plugins
 
+.vite/
