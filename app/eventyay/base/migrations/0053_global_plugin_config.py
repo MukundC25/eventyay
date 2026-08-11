@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('base', '0049_alter_talkquestion_variant_add_video'),
+        ('base', '0052_admission_validity_fields'),
     ]
 
     operations = [
