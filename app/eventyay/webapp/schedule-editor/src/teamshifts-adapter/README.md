@@ -61,7 +61,7 @@ Both PRs must ship together for the shift schedule feature to function.
 ## Architecture
 
 ```
-src/adapters/
+src/teamshifts-adapter/
 ├── types.ts        — Mode, SessionKind, Capabilities, ApiConfig types
 ├── index.ts        — resolveMode(), getCapabilities(), getApiConfig(), resolveSessionKind()
 └── README.md       — this file

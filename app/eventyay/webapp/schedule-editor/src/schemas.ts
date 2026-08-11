@@ -107,7 +107,7 @@ export const TalkSchema = z.object({
   availabilities: z.array(AvailabilityEntrySchema).optional().default([]),
   duration: z.number().optional(),
   do_not_record: z.union([z.boolean(), z.null()]).optional().transform(val => val === true).default(false),
-  roles: z.array(RoleAssignmentSchema).optional().default([]),
+  roles: z.array(RoleAssignmentSchema).nullable().optional().default([]),
   kind: z.enum(['talk', 'break', 'shift']).optional(),
 });
 
@@ -129,7 +129,7 @@ export const ScheduleSchema = z.object({
   talks: z.array(TalkSchema).default([]),
   now: z.string().optional(),
   warnings: WarningRecordSchema.optional().default({}),
-  roles: z.array(ScheduleRoleSchema).default([])
+  roles: z.array(ScheduleRoleSchema).nullable().optional().default([])
 });
 
 export const AvailabilitySchema = z.object({

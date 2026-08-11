@@ -36,6 +36,7 @@ export function getCapabilities(mode?: Mode): Capabilities {
         showRoles: true,
         showClaimUI: true,
         showSubmissionLinks: false,
+        allowOverlap: true,
       }
     case 'shifts':
       return {
@@ -50,6 +51,7 @@ export function getCapabilities(mode?: Mode): Capabilities {
         showRoles: true,
         showClaimUI: false,
         showSubmissionLinks: false,
+        allowOverlap: true,
       }
     case 'talks':
     default:
@@ -65,6 +67,7 @@ export function getCapabilities(mode?: Mode): Capabilities {
         showRoles: false,
         showClaimUI: false,
         showSubmissionLinks: true,
+        allowOverlap: false,
       }
   }
 }

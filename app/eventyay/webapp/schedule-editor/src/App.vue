@@ -45,6 +45,7 @@
 					:end="days.at(-1).clone().endOf('day')",
 					:currentDay="currentDay",
 					:draggedSession="draggedSession",
+					:allowOverlap="caps.allowOverlap",
 					@changeDay="changeDay",
 					@startDragging="caps.canDrag ? startDragging($event) : null",
 					@rescheduleSession="caps.canDrag ? rescheduleSession($event) : null",

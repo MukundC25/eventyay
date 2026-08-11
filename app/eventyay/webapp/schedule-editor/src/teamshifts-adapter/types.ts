@@ -14,6 +14,7 @@ export interface Capabilities {
   showRoles: boolean
   showClaimUI: boolean
   showSubmissionLinks: boolean
+  allowOverlap: boolean
 }
 
 export interface ApiEndpoints {
