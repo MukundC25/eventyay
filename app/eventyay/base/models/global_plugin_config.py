@@ -109,3 +109,15 @@ class GlobalPluginConfig(models.Model):
         except (ProgrammingError, OperationalError):
             logger.debug('GlobalPluginConfig table not yet available, skipping filter')
             return frozenset()
+
+    @classmethod
+    def get_platform_managed_modules(cls) -> frozenset[str]:
+        try:
+            return frozenset(
+                cls.objects.filter(
+                    is_active=True, show_in_organizer_list=False
+                ).values_list('module', flat=True)
+            )
+        except (ProgrammingError, OperationalError):
+            logger.debug('GlobalPluginConfig table not yet available, skipping filter')
+            return frozenset()

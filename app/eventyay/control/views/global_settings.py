@@ -369,6 +369,7 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
         all_plugins = get_all_plugins(include_inactive=True)
         known_modules = {p.module for p in all_plugins}
         newly_disabled = set()
+        platform_managed = set()
 
         for module in known_modules:
             is_active = request.POST.get(f'is_active_{module}') == 'on'
@@ -379,6 +380,8 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
                 enable_by_default = False
                 show_in_organizer_list = False
                 newly_disabled.add(module)
+            elif not show_in_organizer_list:
+                platform_managed.add(module)
 
             GlobalPluginConfig.objects.update_or_create(
                 module=module,
@@ -391,6 +394,8 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
 
         if newly_disabled:
             self._strip_disabled_from_events(newly_disabled)
+        if platform_managed:
+            self._ensure_enabled_on_all_events(platform_managed)
 
         messages.success(request, _('Plugin settings have been saved.'))
         return redirect(reverse('eventyay_admin:admin.global.plugins'))
@@ -402,6 +407,15 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
             filtered = [p for p in current if p not in disabled_modules]
             if len(filtered) != len(current):
                 event.plugins = ','.join(filtered)
+                event.save(update_fields=['plugins'])
+
+    @staticmethod
+    def _ensure_enabled_on_all_events(modules: set[str]):
+        for event in Event.objects.iterator():
+            current = [p for p in (event.plugins or '').split(',') if p]
+            missing = [m for m in modules if m not in current]
+            if missing:
+                event.plugins = ','.join(current + missing)
                 event.save(update_fields=['plugins'])
 
 

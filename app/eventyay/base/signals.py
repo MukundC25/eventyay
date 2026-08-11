@@ -138,6 +138,8 @@ class EventPluginSignal(django.dispatch.Signal):
         if app and hasattr(app, 'EventyayPluginMeta'):
             if app.name in GlobalPluginConfig.get_disabled_modules():
                 return False
+            if app.name in GlobalPluginConfig.get_platform_managed_modules():
+                return True
 
         return check_plugin_active(sender, app, is_core_module, settings.EVENTYAY_PLUGINS_EXCLUDE, lambda s: s.get_plugins())
 

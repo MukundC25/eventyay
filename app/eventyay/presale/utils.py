@@ -150,8 +150,9 @@ def _detect_event(request, require_live=True, require_plugin=None):
                 if not is_core:
                     if require_plugin in GlobalPluginConfig.get_disabled_modules():
                         raise Http404(_('This feature is not enabled.'))
-                    if require_plugin not in request.event.get_plugins():
-                        raise Http404(_('This feature is not enabled.'))
+                    if require_plugin not in GlobalPluginConfig.get_platform_managed_modules():
+                        if require_plugin not in request.event.get_plugins():
+                            raise Http404(_('This feature is not enabled.'))
 
             for receiver, response in process_request.send(request.event, request=request):
                 if response:
