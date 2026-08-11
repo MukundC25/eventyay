@@ -76,6 +76,7 @@ from eventyay.talk_rules.event import (
     can_change_event_settings,
     can_create_events,
     has_any_permission,
+    has_talk_permission,
     is_event_visible,
 )
 
@@ -836,6 +837,7 @@ class Event(
         # The permission names change when we move the code to a different app.
         rules_permissions = {
             'orga_access': has_any_permission,
+            'talk_orga_access': has_talk_permission,
             'view': is_event_visible | has_any_permission,
             'update': can_change_event_settings,
             'create': can_create_events,
