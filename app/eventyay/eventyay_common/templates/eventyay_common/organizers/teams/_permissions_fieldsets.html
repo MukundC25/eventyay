@@ -221,6 +221,14 @@
             </div>
             
             <div class="teamshifts-roles-selector" data-radio-name="{{ form.all_teamshifts_roles.html_name }}" style="margin-top: 15px;">
+                {% if form.limit_teamshifts_roles.errors %}
+                <div class="alert alert-danger" style="margin-bottom: 10px;">
+                    <strong>{% translate "Error:" %}</strong>
+                    {% for error in form.limit_teamshifts_roles.errors %}
+                    {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
                 {% if form.events_with_teamshifts_roles %}
                     <div class="event-track-selector" id="event-teamshifts-roles-selector-{{ form.prefix }}">
                         <div class="event-track-filter-row">
@@ -243,7 +251,7 @@
                             </div>
 
                             {% for event_data in form.events_with_teamshifts_roles %}
-                            <div class="event-track-group" data-event-group-id="{{ event_data.id }}">
+                            <div class="event-track-group" data-event-group-id="{{ event_data.id }}" hidden>
                                 <div class="event-track-group-header">
                                     <i class="fa fa-calendar-o" aria-hidden="true"></i> {{ event_data.name }}
                                 </div>
