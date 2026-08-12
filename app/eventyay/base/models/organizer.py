@@ -422,7 +422,7 @@ class Team(LoggedModel, TimestampedModel, RulesModelMixin, models.Model, metacla
     can_teamshifts_view_email_addresses = models.BooleanField(
         default=False, verbose_name=_('Can view volunteer email addresses')
     )
-    all_teamshifts_roles = models.BooleanField(default=True, verbose_name=_('All teamshifts roles'))
+    all_teamshifts_roles = models.BooleanField(default=False, verbose_name=_('All teamshifts roles'))
     limit_teamshifts_roles = models.JSONField(default=list, blank=True, verbose_name=_('Limit teamshifts roles'))
 
     def __str__(self) -> str:

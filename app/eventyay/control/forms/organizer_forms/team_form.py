@@ -245,9 +245,20 @@ class TeamForm(forms.ModelForm):
             self.add_error('limit_events', error)
 
         all_teamshifts_roles = data.get('all_teamshifts_roles')
+        if isinstance(all_teamshifts_roles, str):
+            all_teamshifts_roles = all_teamshifts_roles == 'True'
         limit_teamshifts_roles = data.get('limit_teamshifts_roles')
         if getattr(self, 'teamshifts_plugin_enabled', False):
-            if not all_teamshifts_roles and not limit_teamshifts_roles:
+            has_teamshifts_permission = any(
+                data.get(perm) for perm in (
+                    'can_teamshifts_manage_applicants',
+                    'can_teamshifts_create_shifts',
+                    'can_teamshifts_create_roles',
+                    'can_teamshifts_send_emails',
+                    'can_teamshifts_view_email_addresses',
+                )
+            )
+            if has_teamshifts_permission and not all_teamshifts_roles and not limit_teamshifts_roles:
                 self.add_error(
                     'limit_teamshifts_roles',
                     forms.ValidationError(_('Please select at least one role if not granting access to all roles.')),

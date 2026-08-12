@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='team',
             name='all_teamshifts_roles',
-            field=models.BooleanField(default=True, verbose_name='All teamshifts roles'),
+            field=models.BooleanField(default=False, verbose_name='All teamshifts roles'),
         ),
         migrations.AddField(
             model_name='team',

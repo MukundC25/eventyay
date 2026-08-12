@@ -209,13 +209,13 @@
         <div class="col-md-9">
             <div class="radio">
                 <label>
-                    <input type="radio" name="{{ form.all_teamshifts_roles.html_name }}" value="True" {% if form.all_teamshifts_roles.value %}checked{% endif %}>
+                    <input type="radio" name="{{ form.all_teamshifts_roles.html_name }}" value="True" {% if form.all_teamshifts_roles.value == True or form.all_teamshifts_roles.value == "True" %}checked{% endif %}>
                     {% translate "All roles (this person can see and manage all roles in the event)" %}
                 </label>
             </div>
             <div class="radio">
                 <label>
-                    <input type="radio" name="{{ form.all_teamshifts_roles.html_name }}" value="False" {% if not form.all_teamshifts_roles.value %}checked{% endif %}>
+                    <input type="radio" name="{{ form.all_teamshifts_roles.html_name }}" value="False" {% if form.all_teamshifts_roles.value == False or form.all_teamshifts_roles.value == "False" or form.all_teamshifts_roles.value == None %}checked{% endif %}>
                     {% translate "Selected roles only (The person can see everything across all roles, but can only act on the roles they are assigned to manage)" %}
                 </label>
             </div>
