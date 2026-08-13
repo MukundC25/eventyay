@@ -413,17 +413,22 @@ class Team(LoggedModel, TimestampedModel, RulesModelMixin, models.Model, metacla
     can_view_vouchers = models.BooleanField(default=False, verbose_name=_('Can view vouchers'))
     can_change_vouchers = models.BooleanField(default=False, verbose_name=_('Can change vouchers'))
 
-    can_teamshifts_manage_applicants = models.BooleanField(
-        default=False, verbose_name=_('Can manage applicants (accept/reject)')
+    TEAMSHIFTS_ROLE_CHOICES = [
+        ('', _('No access')),
+        ('coordinator', _('Event Coordinator')),
+        ('lead', _('Team Lead')),
+    ]
+
+    teamshifts_role = models.CharField(
+        max_length=20,
+        choices=TEAMSHIFTS_ROLE_CHOICES,
+        default='',
+        blank=True,
+        verbose_name=_('TeamShifts role'),
     )
-    can_teamshifts_create_shifts = models.BooleanField(default=False, verbose_name=_('Can create and edit shifts'))
-    can_teamshifts_create_roles = models.BooleanField(default=False, verbose_name=_('Can create roles'))
-    can_teamshifts_send_emails = models.BooleanField(default=False, verbose_name=_('Can send custom emails'))
-    can_teamshifts_view_email_addresses = models.BooleanField(
-        default=False, verbose_name=_('Can view volunteer email addresses')
-    )
-    all_teamshifts_roles = models.BooleanField(default=False, verbose_name=_('All teamshifts roles'))
+    all_teamshifts_roles = models.BooleanField(default=True, verbose_name=_('All teamshifts roles'))
     limit_teamshifts_roles = models.JSONField(default=list, blank=True, verbose_name=_('Limit teamshifts roles'))
+    hide_teamshifts_emails = models.BooleanField(default=False, verbose_name=_('Hide email addresses'))
 
     def __str__(self) -> str:
         return _('%(name)s on %(object)s') % {

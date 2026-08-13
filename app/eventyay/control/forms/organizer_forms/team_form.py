@@ -68,12 +68,9 @@ class TeamForm(forms.ModelForm):
         else:
             self._events_with_teamshifts_roles = []
             teamshifts_fields = [
-                'can_teamshifts_manage_applicants',
-                'can_teamshifts_create_shifts',
-                'can_teamshifts_create_roles',
-                'can_teamshifts_send_emails',
-                'can_teamshifts_view_email_addresses',
+                'teamshifts_role',
                 'all_teamshifts_roles',
+                'hide_teamshifts_emails',
             ]
             for f in teamshifts_fields:
                 if f in self.fields:
@@ -197,12 +194,9 @@ class TeamForm(forms.ModelForm):
             'can_video_moderate',
             'can_video_manage_kiosks',
             'can_video_view_analytics',
-            'can_teamshifts_manage_applicants',
-            'can_teamshifts_create_shifts',
-            'can_teamshifts_create_roles',
-            'can_teamshifts_send_emails',
-            'can_teamshifts_view_email_addresses',
+            'teamshifts_role',
             'all_teamshifts_roles',
+            'hide_teamshifts_emails',
         ]
         widgets = {
             'limit_events': forms.CheckboxSelectMultiple(
@@ -249,16 +243,9 @@ class TeamForm(forms.ModelForm):
             all_teamshifts_roles = all_teamshifts_roles == 'True'
         limit_teamshifts_roles = data.get('limit_teamshifts_roles')
         if getattr(self, 'teamshifts_plugin_enabled', False):
-            has_teamshifts_permission = any(
-                data.get(perm) for perm in (
-                    'can_teamshifts_manage_applicants',
-                    'can_teamshifts_create_shifts',
-                    'can_teamshifts_create_roles',
-                    'can_teamshifts_send_emails',
-                    'can_teamshifts_view_email_addresses',
-                )
-            )
-            if has_teamshifts_permission and not all_teamshifts_roles and not limit_teamshifts_roles:
+            teamshifts_role = data.get('teamshifts_role', '')
+            # Role access scoping only applies to Team Lead
+            if teamshifts_role == 'lead' and not all_teamshifts_roles and not limit_teamshifts_roles:
                 self.add_error(
                     'limit_teamshifts_roles',
                     forms.ValidationError(_('Please select at least one role if not granting access to all roles.')),
@@ -291,15 +278,12 @@ class TeamForm(forms.ModelForm):
             'can_video_moderate',
             'can_video_manage_kiosks',
             'can_video_view_analytics',
-            'can_teamshifts_manage_applicants',
-            'can_teamshifts_create_shifts',
-            'can_teamshifts_create_roles',
-            'can_teamshifts_send_emails',
-            'can_teamshifts_view_email_addresses',
         )
-        if not any(data.get(permission) for permission in permissions):
-            error = forms.ValidationError(_('Please pick at least one permission for this team!'))
-            self.add_error(None, error)
+        has_any_permission = any(data.get(permission) for permission in permissions)
+        if not has_any_permission and not data.get('teamshifts_role'):
+            if not self.instance.pk:
+                error = forms.ValidationError(_('Please pick at least one permission for this team!'))
+                self.add_error(None, error)
 
         if data.get('can_change_orders'):
             data['can_view_orders'] = True
