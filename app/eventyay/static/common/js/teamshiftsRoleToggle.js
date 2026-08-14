@@ -19,7 +19,7 @@ document.querySelectorAll('.teamshifts-lead-options[data-role-name]').forEach(fu
       'input[name="' + roleName + '"]:checked',
     );
     const isLead = selectedRadio && selectedRadio.value === 'lead';
-    optionsDiv.style.display = isLead ? '' : 'none';
+    optionsDiv.hidden = !isLead;
   }
 
   fieldset.querySelectorAll('input[name="' + roleName + '"]').forEach(function (radio) {
@@ -41,7 +41,7 @@ document.querySelectorAll('.teamshifts-roles-selector[data-radio-name]').forEach
     const selectedRolesOnly = container.querySelector(
       'input[name="' + radioName + '"][value="False"]:checked',
     );
-    selector.style.display = selectedRolesOnly ? '' : 'none';
+    selector.hidden = !selectedRolesOnly;
   }
 
   container.querySelectorAll('input[name="' + radioName + '"]').forEach(function (radio) {

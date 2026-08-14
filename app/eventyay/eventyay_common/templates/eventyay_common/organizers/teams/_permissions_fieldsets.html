@@ -213,7 +213,7 @@
                     <input type="radio" name="{{ form.teamshifts_role.html_name }}" value="coordinator" {% if form.teamshifts_role.value == "coordinator" %}checked{% endif %}>
                     <strong>{% translate "Event Coordinator" %}</strong>
                 </label>
-                <p class="help-block" style="margin-left: 20px;">
+                <p class="help-block teamshifts-role-description">
                     {% translate "Full access to everything in TeamShifts — create and edit roles and shifts, manage the call for applicants, accept and reject applications, send custom emails, and assign members to shifts. Always has access to all roles." %}
                 </p>
             </div>
@@ -222,14 +222,14 @@
                     <input type="radio" name="{{ form.teamshifts_role.html_name }}" value="lead" {% if form.teamshifts_role.value == "lead" %}checked{% endif %}>
                     <strong>{% translate "Team Lead" %}</strong>
                 </label>
-                <p class="help-block" style="margin-left: 20px;">
+                <p class="help-block teamshifts-role-description">
                     {% translate "Can create and edit shifts, assign members to shifts, and send custom emails. Cannot manage applications or create roles." %}
                 </p>
             </div>
         </div>
     </div>
 
-    <div class="teamshifts-lead-options" data-role-name="{{ form.teamshifts_role.html_name }}" {% if form.teamshifts_role.value != "lead" %}style="display: none;"{% endif %}>
+    <div class="teamshifts-lead-options" data-role-name="{{ form.teamshifts_role.html_name }}" {% if form.teamshifts_role.value != "lead" %}hidden{% endif %}>
         <div class="form-group">
             <label class="control-label col-md-3">
                 {% translate "Role access" %}
@@ -248,9 +248,9 @@
                     </label>
                 </div>
 
-                <div class="teamshifts-roles-selector" data-radio-name="{{ form.all_teamshifts_roles.html_name }}" style="margin-top: 15px;">
+                <div class="teamshifts-roles-selector" data-radio-name="{{ form.all_teamshifts_roles.html_name }}">
                     {% if form.limit_teamshifts_roles.errors %}
-                    <div class="alert alert-danger" style="margin-bottom: 10px;">
+                    <div class="alert alert-danger">
                         <strong>{% translate "Error:" %}</strong>
                         {% for error in form.limit_teamshifts_roles.errors %}
                         {{ error }}

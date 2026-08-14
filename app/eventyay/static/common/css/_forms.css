@@ -871,3 +871,11 @@ input.password_strength {
   display: inline-block;
   margin-right: 1rem;
 }
+
+.teamshifts-role-description {
+  margin-left: 20px;
+}
+
+.teamshifts-roles-selector {
+  margin-top: 15px;
+}

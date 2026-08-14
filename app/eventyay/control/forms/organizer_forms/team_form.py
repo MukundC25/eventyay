@@ -45,8 +45,7 @@ class TeamForm(forms.ModelForm):
 
         self.teamshifts_plugin_enabled = has_teamshifts
         if has_teamshifts:
-            from django_scopes import scopes_disabled as _sd
-            with _sd():
+            with scopes_disabled():
                 TeamRole = apps.get_model('teamshifts', 'TeamRole')
                 roles_qs = (
                     TeamRole.objects.filter(event__organizer=organizer)
