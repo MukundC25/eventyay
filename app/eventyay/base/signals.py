@@ -126,7 +126,7 @@ class EventPluginSignal(django.dispatch.Signal):
             return []
         return receivers[0]
 
-    def _is_active(self, sender, receiver):
+    def _is_active(self, sender, receiver, _disabled=None, _platform_managed=None):
         if sender is None:
             return True
 
@@ -136,9 +136,11 @@ class EventPluginSignal(django.dispatch.Signal):
         app = resolve_app_for_module(module_path)
 
         if app and hasattr(app, 'EventyayPluginMeta'):
-            if app.name in GlobalPluginConfig.get_disabled_modules():
+            disabled = _disabled if _disabled is not None else GlobalPluginConfig.get_disabled_modules()
+            if app.name in disabled:
                 return False
-            if app.name in GlobalPluginConfig.get_platform_managed_modules():
+            managed = _platform_managed if _platform_managed is not None else GlobalPluginConfig.get_platform_managed_modules()
+            if app.name in managed:
                 return True
 
         return check_plugin_active(sender, app, is_core_module, settings.EVENTYAY_PLUGINS_EXCLUDE, lambda s: s.get_plugins())
@@ -160,8 +162,10 @@ class EventPluginSignal(django.dispatch.Signal):
         if not app_cache:
             _populate_app_cache()
 
+        disabled = GlobalPluginConfig.get_disabled_modules()
+        managed = GlobalPluginConfig.get_platform_managed_modules()
         for receiver in self.get_live_receivers(sender):
-            if self._is_active(sender, receiver):
+            if self._is_active(sender, receiver, _disabled=disabled, _platform_managed=managed):
                 response = receiver(signal=self, sender=sender, **named)
                 responses.append((receiver, response))
         return responses
@@ -184,8 +188,10 @@ class EventPluginSignal(django.dispatch.Signal):
         if not app_cache:
             _populate_app_cache()
 
+        disabled = GlobalPluginConfig.get_disabled_modules()
+        managed = GlobalPluginConfig.get_platform_managed_modules()
         for receiver in self.get_live_receivers(sender):
-            if self._is_active(sender, receiver):
+            if self._is_active(sender, receiver, _disabled=disabled, _platform_managed=managed):
                 named[chain_kwarg_name] = response
                 response = receiver(signal=self, sender=sender, **named)
         return response
@@ -208,8 +214,10 @@ class EventPluginSignal(django.dispatch.Signal):
         if not app_cache:
             _populate_app_cache()
 
+        disabled = GlobalPluginConfig.get_disabled_modules()
+        managed = GlobalPluginConfig.get_platform_managed_modules()
         for receiver in self.get_live_receivers(sender):
-            if self._is_active(sender, receiver):
+            if self._is_active(sender, receiver, _disabled=disabled, _platform_managed=managed):
                 try:
                     response = receiver(signal=self, sender=sender, **named)
                 except Exception as err:

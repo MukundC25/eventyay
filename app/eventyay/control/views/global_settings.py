@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import EmailMessage
 from django.core.validators import validate_email
-from django.db import IntegrityError
+from django.db import IntegrityError, OperationalError, ProgrammingError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, reverse
 from django.urls import reverse_lazy
@@ -342,10 +342,10 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
         context = super().get_context_data(**kwargs)
         all_plugins = get_all_plugins(include_inactive=True)
 
-        configs = {
-            c.module: c
-            for c in GlobalPluginConfig.objects.all()
-        }
+        try:
+            configs = {c.module: c for c in GlobalPluginConfig.objects.all()}
+        except (ProgrammingError, OperationalError):
+            configs = {}
 
         plugin_rows = []
         for plugin in all_plugins:
@@ -371,26 +371,30 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
         newly_disabled = set()
         platform_managed = set()
 
-        for module in known_modules:
-            is_active = request.POST.get(f'is_active_{module}') == 'on'
-            enable_by_default = request.POST.get(f'enable_by_default_{module}') == 'on'
-            show_in_organizer_list = request.POST.get(f'show_in_organizer_list_{module}') == 'on'
+        try:
+            for module in known_modules:
+                is_active = request.POST.get(f'is_active_{module}') == 'on'
+                enable_by_default = request.POST.get(f'enable_by_default_{module}') == 'on'
+                show_in_organizer_list = request.POST.get(f'show_in_organizer_list_{module}') == 'on'
 
-            if not is_active:
-                enable_by_default = False
-                show_in_organizer_list = False
-                newly_disabled.add(module)
-            elif not show_in_organizer_list:
-                platform_managed.add(module)
+                if not is_active:
+                    enable_by_default = False
+                    show_in_organizer_list = False
+                    newly_disabled.add(module)
+                elif not show_in_organizer_list:
+                    platform_managed.add(module)
 
-            GlobalPluginConfig.objects.update_or_create(
-                module=module,
-                defaults={
-                    'is_active': is_active,
-                    'enable_by_default': enable_by_default,
-                    'show_in_organizer_list': show_in_organizer_list,
-                },
-            )
+                GlobalPluginConfig.objects.update_or_create(
+                    module=module,
+                    defaults={
+                        'is_active': is_active,
+                        'enable_by_default': enable_by_default,
+                        'show_in_organizer_list': show_in_organizer_list,
+                    },
+                )
+        except (ProgrammingError, OperationalError):
+            messages.error(request, _('Plugin configuration table is not available. Please run migrations.'))
+            return redirect(reverse('eventyay_admin:admin.global.plugins'))
 
         if newly_disabled:
             self._strip_disabled_from_events(newly_disabled)

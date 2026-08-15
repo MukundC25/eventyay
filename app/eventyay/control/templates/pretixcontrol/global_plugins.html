@@ -24,7 +24,7 @@
             <th>{% trans "Plugin" %}</th>
             <th class="text-center">{% trans "Active" %}</th>
             <th class="text-center">{% trans "Enable by default" %}</th>
-            <th class="text-center">{% trans "Show in organizer plugin list" %}</th>
+            <th class="text-center">{% trans "Show in organiser plugin list" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -59,7 +59,7 @@
                 <input type="checkbox"
                        name="show_in_organizer_list_{{ row.module }}"
                        data-col="show_in_organizer_list"
-                       aria-label="{% trans 'Show in organizer plugin list' %}: {{ row.name }}"
+                       aria-label="{% trans 'Show in organiser plugin list' %}: {{ row.name }}"
                        {% if row.show_in_organizer_list and row.is_active %}checked{% endif %}
                        {% if not row.is_active %}disabled{% endif %}>
               </td>
