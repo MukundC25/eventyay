@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
             name='teamshifts_role',
             field=models.CharField(
                 blank=True,
-                choices=[('', 'No access'), ('coordinator', 'Event Coordinator'), ('lead', 'Team Lead')],
+                choices=[('coordinator', 'Event Coordinator'), ('lead', 'Team Lead')],
                 default='',
                 max_length=20,
                 verbose_name='TeamShifts role',

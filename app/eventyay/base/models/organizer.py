@@ -414,7 +414,6 @@ class Team(LoggedModel, TimestampedModel, RulesModelMixin, models.Model, metacla
     can_change_vouchers = models.BooleanField(default=False, verbose_name=_('Can change vouchers'))
 
     TEAMSHIFTS_ROLE_CHOICES = [
-        ('', _('No access')),
         ('coordinator', _('Event Coordinator')),
         ('lead', _('Team Lead')),
     ]
