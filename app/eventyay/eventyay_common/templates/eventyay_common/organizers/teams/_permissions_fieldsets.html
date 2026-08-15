@@ -204,6 +204,12 @@
         <div class="col-md-9">
             <div class="radio">
                 <label>
+                    <input type="radio" name="{{ form.teamshifts_role.html_name }}" value="" {% if not form.teamshifts_role.value %}checked{% endif %}>
+                    <span class="text-muted"></span>{% translate "None" %}</span>
+                </label>
+            </div>
+            <div class="radio">
+                <label>
                     <input type="radio" name="{{ form.teamshifts_role.html_name }}" value="coordinator" {% if form.teamshifts_role.value == "coordinator" %}checked{% endif %}>
                     <strong>{% translate "Event Coordinator" %}</strong>
                 </label>
