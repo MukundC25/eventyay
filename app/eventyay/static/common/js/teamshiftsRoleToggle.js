@@ -1,44 +1,50 @@
-/**
- * TeamShifts role toggle for Team permissions.
- *
- * Shows/hides the Team Lead options (role access + hide emails) based on
- * which TeamShifts role radio is selected. Also toggles the role selector
- * visibility based on "All roles" vs "Selected roles only".
- */
-
-// Toggle Team Lead options visibility based on role selection
-document.querySelectorAll('.teamshifts-lead-options[data-role-name]').forEach(function (optionsDiv) {
-  const roleName = optionsDiv.dataset.roleName;
-  const fieldset = optionsDiv.closest('fieldset');
-  if (!fieldset || !roleName) {
+document.querySelectorAll('[data-teamshifts-role-value]').forEach(function (hiddenInput) {
+  const fieldset = hiddenInput.closest('fieldset');
+  if (!fieldset) {
     return;
   }
 
-  function toggleLeadOptions() {
-    const selectedRadio = fieldset.querySelector(
-      'input[name="' + roleName + '"]:checked',
-    );
-    const isLead = selectedRadio && selectedRadio.value === 'lead';
-    optionsDiv.hidden = !isLead;
+  const checkboxes = fieldset.querySelectorAll('[data-teamshifts-role]');
+  const leadOptions = fieldset.querySelector('.teamshifts-lead-options');
+
+  function syncState() {
+    var activeRole = '';
+    checkboxes.forEach(function (cb) {
+      if (cb.checked) {
+        activeRole = cb.dataset.teamshiftsRole;
+      }
+    });
+    hiddenInput.value = activeRole;
+    if (leadOptions) {
+      leadOptions.hidden = activeRole !== 'lead';
+    }
   }
 
-  fieldset.querySelectorAll('input[name="' + roleName + '"]').forEach(function (radio) {
-    radio.addEventListener('change', toggleLeadOptions);
+  checkboxes.forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      if (cb.checked) {
+        checkboxes.forEach(function (other) {
+          if (other !== cb) {
+            other.checked = false;
+          }
+        });
+      }
+      syncState();
+    });
   });
 
-  toggleLeadOptions();
+  syncState();
 });
 
-// Toggle roles selector visibility based on "All roles" vs "Selected roles only"
 document.querySelectorAll('.teamshifts-roles-selector[data-radio-name]').forEach(function (selector) {
-  const radioName = selector.dataset.radioName;
-  const container = selector.closest('.teamshifts-lead-options') || selector.closest('fieldset');
+  var radioName = selector.dataset.radioName;
+  var container = selector.closest('.teamshifts-lead-options') || selector.closest('fieldset');
   if (!container || !radioName) {
     return;
   }
 
   function toggle() {
-    const selectedRolesOnly = container.querySelector(
+    var selectedRolesOnly = container.querySelector(
       'input[name="' + radioName + '"][value="False"]:checked',
     );
     selector.hidden = !selectedRolesOnly;

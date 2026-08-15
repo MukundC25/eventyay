@@ -280,9 +280,8 @@ class TeamForm(forms.ModelForm):
         )
         has_any_permission = any(data.get(permission) for permission in permissions)
         if not has_any_permission and not data.get('teamshifts_role'):
-            if not self.instance.pk:
-                error = forms.ValidationError(_('Please pick at least one permission for this team!'))
-                self.add_error(None, error)
+            error = forms.ValidationError(_('Please pick at least one permission for this team!'))
+            self.add_error(None, error)
 
         if data.get('can_change_orders'):
             data['can_view_orders'] = True
