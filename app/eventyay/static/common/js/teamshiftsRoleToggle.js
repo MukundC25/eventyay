@@ -1,41 +1,23 @@
-document.querySelectorAll('[data-teamshifts-role-value]').forEach(function (hiddenInput) {
-  const fieldset = hiddenInput.closest('fieldset');
-  if (!fieldset) {
+document.querySelectorAll('.teamshifts-lead-options[data-role-name]').forEach(function (optionsDiv) {
+  var roleName = optionsDiv.dataset.roleName;
+  var form = optionsDiv.closest('form') || optionsDiv.closest('fieldset');
+  if (!form || !roleName) {
     return;
   }
 
-  const checkboxes = fieldset.querySelectorAll('[data-teamshifts-role]');
-  const leadOptions = fieldset.querySelector('.teamshifts-lead-options');
-
-  function syncState() {
-    var activeRole = '';
-    checkboxes.forEach(function (cb) {
-      if (cb.checked) {
-        activeRole = cb.dataset.teamshiftsRole;
-      }
-    });
-    hiddenInput.value = activeRole;
-    if (leadOptions) {
-      leadOptions.hidden = activeRole !== 'lead';
-    }
+  function toggleLeadOptions() {
+    var checked = form.querySelector('input[name="' + roleName + '"]:checked');
+    optionsDiv.hidden = !(checked && checked.value === 'lead');
   }
 
-  checkboxes.forEach(function (cb) {
-    cb.addEventListener('change', function () {
-      if (cb.checked) {
-        checkboxes.forEach(function (other) {
-          if (other !== cb) {
-            other.checked = false;
-          }
-        });
-      }
-      syncState();
-    });
+  form.querySelectorAll('input[name="' + roleName + '"]').forEach(function (radio) {
+    radio.addEventListener('change', toggleLeadOptions);
   });
 
-  syncState();
+  toggleLeadOptions();
 });
 
+// Toggle roles selector visibility based on "All roles" vs "Selected roles only"
 document.querySelectorAll('.teamshifts-roles-selector[data-radio-name]').forEach(function (selector) {
   var radioName = selector.dataset.radioName;
   var container = selector.closest('.teamshifts-lead-options') || selector.closest('fieldset');

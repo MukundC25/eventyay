@@ -425,7 +425,7 @@ class Team(LoggedModel, TimestampedModel, RulesModelMixin, models.Model, metacla
         blank=True,
         verbose_name=_('TeamShifts role'),
     )
-    all_teamshifts_roles = models.BooleanField(default=True, verbose_name=_('All teamshifts roles'))
+    all_teamshifts_roles = models.BooleanField(default=False, verbose_name=_('All teamshifts roles'))
     limit_teamshifts_roles = models.JSONField(default=list, blank=True, verbose_name=_('Limit teamshifts roles'))
     hide_teamshifts_emails = models.BooleanField(default=False, verbose_name=_('Hide email addresses'))
 

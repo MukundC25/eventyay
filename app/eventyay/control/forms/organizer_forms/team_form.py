@@ -41,7 +41,9 @@ class TeamForm(forms.ModelForm):
                 del self.fields["can_manage_social_media"]
         has_teamshifts = False
         if apps.is_installed('teamshifts'):
-            has_teamshifts = organizer.events.filter(plugins__contains='teamshifts').exists()
+            has_teamshifts = organizer.events.filter(
+                plugins__regex=r'(^|,)teamshifts(,|$)'
+            ).exists()
 
         self.teamshifts_plugin_enabled = has_teamshifts
         if has_teamshifts:
@@ -250,7 +252,9 @@ class TeamForm(forms.ModelForm):
                     forms.ValidationError(_('Please select at least one role if not granting access to all roles.')),
                 )
 
-            # SafeModelMultipleChoiceField returns a queryset. Convert to list of PKs for the JSONField
+            # SafeModelMultipleChoiceField validates submitted PKs against roles_qs
+            # (scoped to organizer), rejecting cross-organizer role IDs at field level.
+            # Convert the validated queryset to a list of PKs for the JSONField.
             if 'limit_teamshifts_roles' in data and hasattr(data['limit_teamshifts_roles'], 'values_list'):
                 data['limit_teamshifts_roles'] = list(data['limit_teamshifts_roles'].values_list('pk', flat=True))
 

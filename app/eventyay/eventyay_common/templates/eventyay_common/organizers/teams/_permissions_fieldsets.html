@@ -197,21 +197,20 @@
 {% if form.teamshifts_plugin_enabled %}
 <fieldset>
     <legend>{% translate "TeamShifts Permissions" %}</legend>
-    <input type="hidden" name="{{ form.teamshifts_role.html_name }}" value="{{ form.teamshifts_role.value|default:'' }}" data-teamshifts-role-value>
     <div class="form-group">
         <div class="col-md-offset-3 col-md-9">
-            <div class="checkbox">
+            <div class="radio">
                 <label>
-                    <input type="checkbox" data-teamshifts-role="coordinator" {% if form.teamshifts_role.value == "coordinator" %}checked{% endif %}>
+                    <input type="radio" name="{{ form.teamshifts_role.html_name }}" value="coordinator" {% if form.teamshifts_role.value == "coordinator" %}checked{% endif %}>
                     {% translate "Event Coordinator" %}
                 </label>
                 <p class="help-block">
                     {% translate "Full access to everything in TeamShifts — create and edit roles and shifts, manage the call for applicants, accept and reject applications, send custom emails, and assign members to shifts. Always has access to all roles." %}
                 </p>
             </div>
-            <div class="checkbox">
+            <div class="radio">
                 <label>
-                    <input type="checkbox" data-teamshifts-role="lead" {% if form.teamshifts_role.value == "lead" %}checked{% endif %}>
+                    <input type="radio" name="{{ form.teamshifts_role.html_name }}" value="lead" {% if form.teamshifts_role.value == "lead" %}checked{% endif %}>
                     {% translate "Team Lead" %}
                 </label>
                 <p class="help-block">
@@ -221,7 +220,7 @@
         </div>
     </div>
 
-    <div class="teamshifts-lead-options" {% if form.teamshifts_role.value != "lead" %}hidden{% endif %}>
+    <div class="teamshifts-lead-options" data-role-name="{{ form.teamshifts_role.html_name }}" {% if form.teamshifts_role.value != "lead" %}hidden{% endif %}>
         <div class="form-group">
             <label class="control-label col-md-3">
                 {% translate "Role access" %}
