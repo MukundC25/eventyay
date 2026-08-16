@@ -1009,7 +1009,23 @@ _LANGUAGES_CONFIG = {
 }
 
 # Derive legacy variables from _LANGUAGES_CONFIG for backward compatibility
-ALL_LANGUAGES = [(code, info['name']) for code, info in _LANGUAGES_CONFIG.items()]
+def _build_all_languages():
+    """Build language list with 'NativeName (EnglishName)' format labels."""
+    result = []
+    for code, info in _LANGUAGES_CONFIG.items():
+        natural_name = info.get('natural_name', '')
+        # info['name'] is gettext_lazy; access the source msgid directly for the English name
+        name_obj = info['name']
+        english_name = name_obj._args[0] if hasattr(name_obj, '_args') and name_obj._args else str(name_obj)
+        if natural_name.strip().casefold() == english_name.strip().casefold():
+            label = natural_name
+        else:
+            label = f'{natural_name} ({english_name})'
+        result.append((code, label))
+    return result
+
+
+ALL_LANGUAGES = _build_all_languages()
 
 LANGUAGES_OFFICIAL = {code for code, info in _LANGUAGES_CONFIG.items() if info.get('official', False)}
 LANGUAGES_INCUBATING = {code for code, info in _LANGUAGES_CONFIG.items() if info.get('incubating', False)}
