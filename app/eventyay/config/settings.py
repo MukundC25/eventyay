@@ -1011,15 +1011,16 @@ _LANGUAGES_CONFIG = {
 
 # Derive legacy variables from _LANGUAGES_CONFIG for backward compatibility
 def _build_all_languages():
-    """Build language list with 'NativeName (EnglishName)' format labels."""
     result = []
     for code, info in _LANGUAGES_CONFIG.items():
         natural_name = info.get('natural_name', '')
-        # info['name'] is gettext_lazy; access the source msgid directly for the English name
+        is_rtl = info.get('bidi', False)
         name_obj = info['name']
-        english_name = name_obj._args[0] if hasattr(name_obj, '_args') and name_obj._args else str(name_obj)
+        english_name = name_obj._args[0] if hasattr(name_obj, '_args') and name_obj._args else natural_name
         if natural_name.strip().casefold() == english_name.strip().casefold():
             label = natural_name
+        elif is_rtl:
+            label = f'\u200e({english_name}) {natural_name}\u200e'
         else:
             label = f'{natural_name} ({english_name})'
         result.append((code, label))
@@ -1031,6 +1032,11 @@ ALL_LANGUAGES = _build_all_languages()
 LANGUAGES_OFFICIAL = {code for code, info in _LANGUAGES_CONFIG.items() if info.get('official', False)}
 LANGUAGES_INCUBATING = {code for code, info in _LANGUAGES_CONFIG.items() if info.get('incubating', False)}
 LANGUAGES_RTL = {code for code, info in _LANGUAGES_CONFIG.items() if info.get('bidi', False)}
+
+# Override Django's LANGUAGES_BIDI so i18n form inputs always render dir="ltr".
+# This keeps placeholders left-aligned for RTL languages while browsers still
+# auto-detect RTL characters for typed content (Unicode bidi algorithm handles it).
+LANGUAGES_BIDI = []
 
 # TODO: Convert to tuple (some code still assumes LANGUAGES to be a list)
 LANGUAGES = (
