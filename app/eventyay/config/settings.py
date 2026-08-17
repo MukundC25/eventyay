@@ -1014,15 +1014,12 @@ def _build_all_languages():
     result = []
     for code, info in _LANGUAGES_CONFIG.items():
         natural_name = info.get('natural_name', '')
-        is_rtl = info.get('bidi', False)
         name_obj = info['name']
         english_name = name_obj._args[0] if hasattr(name_obj, '_args') and name_obj._args else natural_name
         if natural_name.strip().casefold() == english_name.strip().casefold():
             label = natural_name
-        elif is_rtl:
-            label = f'\u200e({english_name}) {natural_name}\u200e'
         else:
-            label = f'{natural_name} ({english_name})'
+            label = f'\u200e{natural_name} ({english_name})'
         result.append((code, label))
     return result
 

@@ -54,13 +54,10 @@ def get_language_choices_native_with_ui_name(codes=None) -> list[tuple[str, str]
         language_info = settings.LANGUAGES_INFORMATION.get(code, {})
         natural_name = language_info.get('natural_name') or english_names.get(code, code)
         english_name = english_names.get(code, code)
-        is_rtl = language_info.get('bidi', False)
         if natural_name.strip().casefold() == english_name.strip().casefold():
             label = natural_name
-        elif is_rtl:
-            label = f'\u200e({english_name}) {natural_name}\u200e'
         else:
-            label = f'{natural_name} ({english_name})'
+            label = f'\u200e{natural_name} ({english_name})'
         choices.append((code, label))
     return choices
 
