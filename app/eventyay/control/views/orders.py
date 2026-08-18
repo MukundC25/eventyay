@@ -2454,12 +2454,12 @@ class OrderSendMail(EventPermissionRequiredMixin, OrderViewMixin, FormView):
             )
             messages.success(
                 self.request,
-                _('Your message has been queued and will be sent to {}.'.format(order.email)),
+                _('Your message has been queued and will be sent to %(email)s.') % {'email': order.email},
             )
         except SendMailException:
             messages.error(
                 self.request,
-                _('Failed to send mail to the following user: {}'.format(order.email)),
+                _('Failed to send mail to the following user: %(email)s.') % {'email': order.email},
             )
         return super(OrderSendMail, self).form_valid(form)
 
@@ -2540,12 +2540,12 @@ class OrderPositionSendMail(OrderSendMail):
             )
             messages.success(
                 self.request,
-                _('Your message has been queued and will be sent to {}.'.format(position.attendee_email)),
+                _('Your message has been queued and will be sent to %(email)s.') % {'email': position.attendee_email},
             )
         except SendMailException:
             messages.error(
                 self.request,
-                _('Failed to send mail to the following user: {}'.format(position.attendee_email)),
+                _('Failed to send mail to the following user: %(email)s.') % {'email': position.attendee_email},
             )
         return super(OrderSendMail, self).form_valid(form)
 

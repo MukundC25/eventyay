@@ -952,25 +952,24 @@ class EditorEmailPreview(EventPermissionRequiredMixin, View):
         return JsonResponse({'html': preview_html})
 
     def _handle_form(self, request):
-        from eventyay.base.i18n import language as switch_language
-
         event = request.event
-        event_locales = list(event.settings.locales)
-        region = event.settings.region
         previews = {}
 
-        for locale in event_locales:
-            body = request.POST.get(f'body_{locale}', '')
+        for key, values in request.POST.lists():
+            if not key.startswith('body_') or not values:
+                continue
+            locale = key[5:]
+            body = values[0]
             if not body:
                 continue
             safe_html = sanitize_email_html(body)
-            with switch_language(locale, region):
-                previews[locale] = expand_email_preview_placeholders(safe_html, event, locale=locale)
+            previews[locale] = expand_email_preview_placeholders(safe_html, event, locale=locale)
 
         if not previews:
             body = request.POST.get('body', '')
             if body:
                 safe_html = sanitize_email_html(body)
+                event_locales = list(event.settings.locales)
                 previews[event_locales[0] if event_locales else 'en'] = expand_email_preview_placeholders(
                     safe_html, event
                 )

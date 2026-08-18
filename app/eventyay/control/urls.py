@@ -454,7 +454,7 @@ urlpatterns = [
                     name='event.order.position.sendmail',
                 ),
                 url(
-                    r'^orders/(?P<code>[0-9A-Z]+)/(?P<position>[0-9A-Z]+)/sendmail/preview$',
+                    r'^orders/(?P<code>[0-9A-Z]+)/(?P<position>\d+)/sendmail/preview$',
                     orders.OrderMailPreview.as_view(),
                     name='event.order.position.sendmail.preview',
                 ),
