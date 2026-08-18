@@ -771,6 +771,7 @@ class Event(
         speakers = '{base}speakers/'
         settings = edit_settings = '{base}settings/'
         review_settings = '{settings}review/'
+        feedback_settings = '{settings}feedback/'
         mail_settings = edit_mail_settings = '{settings}mail'
         widget_settings = '{settings}widget'
         import_export_settings = '{settings}import-export/'
@@ -1010,7 +1011,6 @@ class Event(
         this event, so you don't have to prefix your cache keys. In addition, the cache
         is being cleared every time the event or one of its related objects change.
         """
-        # FIXME: This "cache" module is missing.
         from eventyay.base.cache import ObjectRelatedCache
 
         return ObjectRelatedCache(self)
