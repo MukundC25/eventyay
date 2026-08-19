@@ -6,17 +6,25 @@
  * talk-rendering logic.
  */
 
+export const SHIFT_STATUS_COLORS = {
+	full: '#28a745',
+	empty: '#dc3545',
+	partial: '#c9920a',
+}
+
+export function isShiftSchedule (scheduleData) {
+	const data = scheduleData?.value ?? scheduleData
+	return data?.mode === 'shifts' || data?.schedule?.mode === 'shifts'
+}
+
 /**
  * Resolve mode from the schedule data payload.
- * If the schedule data contains a `mode` field set to 'shifts', the
- * widget is displaying a shift schedule.
  *
  * @param {Object|null} scheduleData
  * @returns {'talks'|'shifts'}
  */
 export function resolveMode (scheduleData) {
-	if (scheduleData && scheduleData.mode === 'shifts') return 'shifts'
-	return 'talks'
+	return isShiftSchedule(scheduleData) ? 'shifts' : 'talks'
 }
 
 /**
@@ -42,11 +50,6 @@ export function getCapabilities (mode) {
 	}
 }
 
-export function isShiftSchedule (scheduleData) {
-	const data = scheduleData?.value ?? scheduleData
-	return data?.mode === 'shifts' || data?.schedule?.mode === 'shifts'
-}
-
 /**
  * Determine if a session is a shift (has roles array).
  *
@@ -66,26 +69,55 @@ export function getAssignedList (role) {
 	return []
 }
 
-/**
- * Get capacity status class for a shift role.
- *
- * @param {{ capacity: number, assigned_count: number }} role
- * @returns {'open'|'partial'|'full'}
- */
+export const ASSIGNEE_PREVIEW_LIMIT = 2
+
+export function previewAssignees (role) {
+	return getAssignedList(role).slice(0, ASSIGNEE_PREVIEW_LIMIT)
+}
+
+export function hiddenAssigneeCount (role) {
+	return Math.max(0, getAssignedList(role).length - ASSIGNEE_PREVIEW_LIMIT)
+}
+
 export function getCapacityStatus (role) {
 	const assigned = getAssignedList(role)
-	const capacity = role?.capacity || 0
-	if (capacity && assigned.length >= capacity) return 'full'
+	const capacity = Number(role?.capacity)
+	if (Number.isFinite(capacity) && capacity > 0 && assigned.length >= capacity) return 'full'
 	if (assigned.length > 0) return 'partial'
 	return 'empty'
 }
 
+export function getShiftTrackColor (roles) {
+	if (!Array.isArray(roles) || !roles.length) {
+		return 'var(--pretalx-clr-primary)'
+	}
+	let allFull = true
+	let anyEmpty = false
+	for (const role of roles) {
+		const capacity = Number(role.capacity) || 0
+		if (capacity <= 0) continue
+		const assigned = getAssignedList(role).length
+		if (assigned === 0) {
+			anyEmpty = true
+			break
+		}
+		if (assigned < capacity) {
+			allFull = false
+		}
+	}
+	if (anyEmpty) return SHIFT_STATUS_COLORS.empty
+	if (allFull) return SHIFT_STATUS_COLORS.full
+	return SHIFT_STATUS_COLORS.partial
+}
+
 export function getCurrentUserId (scheduleData) {
-	return scheduleData?.schedule?.current_user_id ?? scheduleData?.current_user_id ?? null
+	const data = scheduleData?.value ?? scheduleData
+	return data?.schedule?.current_user_id ?? data?.current_user_id ?? null
 }
 
 export function getCurrentUserName (scheduleData) {
-	return scheduleData?.schedule?.current_user_name || scheduleData?.current_user_name || ''
+	const data = scheduleData?.value ?? scheduleData
+	return data?.schedule?.current_user_name || data?.current_user_name || ''
 }
 
 export function getShiftId (session) {
@@ -95,12 +127,12 @@ export function getShiftId (session) {
 	return Number.isNaN(parsed) ? raw : parsed
 }
 
-export function claimUrl (eventUrl, session, role) {
+export function claimUrl (eventUrl, session) {
 	const base = (eventUrl || '').replace(/\/?$/, '/')
 	return `${base}teamshifts/shifts/${getShiftId(session)}/claim/`
 }
 
-export function withdrawUrl (eventUrl, session, role) {
+export function withdrawUrl (eventUrl, session) {
 	const base = (eventUrl || '').replace(/\/?$/, '/')
 	return `${base}teamshifts/shifts/${getShiftId(session)}/withdraw/`
 }
