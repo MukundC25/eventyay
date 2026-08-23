@@ -144,6 +144,17 @@
 								.col-md-4
 									button.assign-btn(type="button", @click="assignMember(role.id)", :disabled="assigningWaiting") {{ $t('Assign') }}
 
+		confirm-dialog(
+			ref="confirmDialogRef",
+			:title="confirmDialogTitle",
+			:lead="confirmDialogLead",
+			:confirm-label="confirmDialogLabel",
+			:confirm-class="confirmDialogClass",
+			:busy="confirmDialogBusy",
+			:error="confirmDialogError",
+			@confirm="onConfirmDialogConfirm",
+			@cancel="onConfirmDialogCancel")
+
 	bunt-progress-circular(v-else, size="huge", :page="true")
 </template>
 
@@ -153,6 +164,7 @@ import moment, { Moment } from 'moment-timezone'
 import GridSchedule from '~/components/GridSchedule.vue'
 import TalkSession from '~/components/Session.vue'
 import ShiftSession from '~/teamshifts-adapter/Session.vue'
+import ConfirmDialog from '~/teamshifts-adapter/ConfirmDialog.vue'
 import api from '~/api'
 import { resolveMode, getCapabilities } from '~/teamshifts-adapter'
 import type { Capabilities } from '~/teamshifts-adapter/types'
@@ -272,6 +284,39 @@ const assigningSession = ref<SessionData | null>(null)
 const assigningWaiting = ref<boolean>(false)
 const assignModalError = ref<string>('')
 const selectedMemberIds = ref<Record<string, number | undefined>>({})
+
+const confirmDialogRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
+const confirmDialogTitle = ref('')
+const confirmDialogLead = ref('')
+const confirmDialogLabel = ref('')
+const confirmDialogClass = ref('btn-primary')
+const confirmDialogBusy = ref(false)
+const confirmDialogError = ref('')
+let confirmDialogResolve: ((value: boolean) => void) | null = null
+
+function showConfirmDialog(opts: { title: string; lead: string; confirmLabel: string; confirmClass?: string }): Promise<boolean> {
+  confirmDialogTitle.value = opts.title
+  confirmDialogLead.value = opts.lead
+  confirmDialogLabel.value = opts.confirmLabel
+  confirmDialogClass.value = opts.confirmClass || 'btn-primary'
+  confirmDialogBusy.value = false
+  confirmDialogError.value = ''
+  return new Promise((resolve) => {
+    confirmDialogResolve = resolve
+    nextTick(() => confirmDialogRef.value?.show())
+  })
+}
+
+function onConfirmDialogConfirm() {
+  confirmDialogRef.value?.close()
+  confirmDialogResolve?.(true)
+  confirmDialogResolve = null
+}
+
+function onConfirmDialogCancel() {
+  confirmDialogResolve?.(false)
+  confirmDialogResolve = null
+}
 const isUnassigning = ref<boolean>(false)
 const locales = ref<string[]>(['en'])
 const unassignedFilterString = ref<string>('')
@@ -668,7 +713,13 @@ async function deleteSessionDirect(session: SessionData | Talk): Promise<void> {
 }
 
 async function deleteSessionById(id: number): Promise<boolean> {
-  if (!window.confirm($t('Are you sure you want to delete this session?'))) return false
+  const confirmed = await showConfirmDialog({
+    title: $t('Delete shift'),
+    lead: $t('Are you sure you want to delete this session? This action cannot be undone.'),
+    confirmLabel: $t('Delete'),
+    confirmClass: 'btn-danger',
+  })
+  if (!confirmed) return false
 
   editorSessionWaiting.value = true
   try {
@@ -680,7 +731,7 @@ async function deleteSessionById(id: number): Promise<boolean> {
     return true
   } catch (error) {
     console.error('Failed to delete session', error)
-    window.alert($t('Failed to delete session. Please try again.'))
+    assignModalError.value = $t('Failed to delete session. Please try again.')
     return false
   } finally {
     editorSessionWaiting.value = false
@@ -750,7 +801,13 @@ async function assignMember(roleId: number): Promise<void> {
 
 async function unassignMember(roleId: number, userId: number): Promise<void> {
   if (!assigningSession.value) return
-  if (!window.confirm($t('Are you sure you want to unassign this member?'))) return
+  const confirmed = await showConfirmDialog({
+    title: $t('Unassign member'),
+    lead: $t('Are you sure you want to unassign this member from the shift?'),
+    confirmLabel: $t('Unassign'),
+    confirmClass: 'btn-danger',
+  })
+  if (!confirmed) return
   
   assigningWaiting.value = true
   try {
