@@ -1,5 +1,5 @@
 <template lang="pug">
-.c-grid-schedule(:class="'density-' + density")
+.c-grid-schedule(:class="[('density-' + density), { 'is-shift-mode': isShiftMode }]")
 	.sticky-header
 		.rooms-bar(ref="roomsBar")
 			.rooms-inner(:style="{'--total-rooms': rooms.length, 'min-width': scrollContentWidth ? (scrollContentWidth + 'px') : null}")
@@ -150,6 +150,10 @@ export default {
 		SessionComponent () {
 			const data = this.scheduleData?.value ?? this.scheduleData
 			return isShiftSchedule(data) ? ShiftSession : TalkSession
+		},
+		isShiftMode () {
+			const data = this.scheduleData?.value ?? this.scheduleData
+			return isShiftSchedule(data)
 		},
 		favSet () {
 			return new Set(this.favs || [])
@@ -677,6 +681,8 @@ export default {
 	flex: auto
 	background-color: $clr-grey-50
 	--room-col-min: 320px
+	&.is-shift-mode
+		--room-col-min: 420px
 	.sticky-header
 		position: sticky
 		top: calc(var(--pretalx-sticky-top-offset, 0px) + var(--pretalx-toolbar-height, 30px) + var(--pretalx-version-warning-height, 0px) - 1px)
