@@ -35,7 +35,7 @@ div.c-linear-schedule-session.is-shift-session(
 							| {{ roleName(role) }}
 							span.role-restricted-tag(v-if="role.is_restricted") Restricted
 						span.role-divider
-						span.role-badge(:class="'badge-' + getCapacityStatus(role)") {{ assignedList(role).length }}/{{ role.capacity }} assigned
+						span.role-badge(:class="'badge-' + getCapacityStatus(role)") {{ assignedList(role).length }}/{{ role.capacity }} needed
 					.role-assignees
 						template(v-if="assignedList(role).length")
 							span.role-assignee(v-for="(user, i) in previewAssignees(role)", :key="user.id || i")
