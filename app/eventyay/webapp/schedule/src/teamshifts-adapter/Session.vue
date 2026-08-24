@@ -190,6 +190,20 @@ export default {
 			}
 			return null
 		},
+		hasOverlappingAssignment () {
+			if (!this.currentUserId || !this.session?.start || !this.session?.end) return false
+			const data = this.scheduleData?.value ?? this.scheduleData
+			const allSessions = data?.sessions || []
+			for (const other of allSessions) {
+				if (!other.id || other.id === this.session.id) continue
+				if (!other.start || !other.end || !other.roles) continue
+				if (!other.start.isBefore(this.session.end) || !other.end.isAfter(this.session.start)) continue
+				for (const role of other.roles) {
+					if (getAssignedList(role).some(user => user.id === this.currentUserId)) return true
+				}
+			}
+			return false
+		},
 		shiftTimeLabel () {
 			if (!this.session.start) return ''
 			const tz = this.effectiveTimezone
@@ -283,6 +297,7 @@ export default {
 			if (role.is_restricted) return false
 			if (this.isRoleFull(role)) return false
 			if (this.myAssignedRoleId) return false
+			if (this.hasOverlappingAssignment) return false
 			return true
 		},
 		async postRoleAction (url, role) {

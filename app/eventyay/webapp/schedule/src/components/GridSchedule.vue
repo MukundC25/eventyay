@@ -458,6 +458,32 @@ export default {
 		},
 		getSessionStyle (session) {
 			const roomIndex = this.roomIndexLookup.has(session.room) ? this.roomIndexLookup.get(session.room) : -1
+			const data = this.scheduleData?.value ?? this.scheduleData
+			if (isShiftSchedule(data) && session.start && session.end) {
+				const overlapping = this.sessions.filter(s => {
+					if (s.id === session.id) return true
+					if (!s.room || !s.start || !s.end) return false
+					if (s.room !== session.room) return false
+					return s.start.isBefore(session.end) && s.end.isAfter(session.start)
+				}).sort((a, b) => {
+					const diff = a.start.diff(b.start)
+					return diff !== 0 ? diff : a.id - b.id
+				})
+				if (overlapping.length > 1) {
+					const myIndex = overlapping.findIndex(s => s.id === session.id)
+					if (myIndex === 0) {
+						return {
+							'grid-row-start': getSliceName(session.start),
+							'grid-column': roomIndex > -1 ? roomIndex + 2 : null
+						}
+					}
+					const prev = overlapping[myIndex - 1]
+					return {
+						'grid-row-start': getSliceName(prev.end),
+						'grid-column': roomIndex > -1 ? roomIndex + 2 : null
+					}
+				}
+			}
 			return {
 				'grid-row': `${getSliceName(session.start)} / ${getSliceName(session.end)}`,
 				'grid-column': roomIndex > -1 ? roomIndex + 2 : null
