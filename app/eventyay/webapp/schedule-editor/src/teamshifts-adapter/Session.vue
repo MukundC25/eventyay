@@ -49,7 +49,7 @@
 				template(v-else)
 					span.text-muted(style="font-size:11px") {{ $t('Full / Restricted') }}
 
-		.shift-manage.mt-2.text-right(v-else-if="caps.canAssignMembers && !isBreak")
+		.shift-manage.mt-2.text-right(v-else-if="caps.canAssignMembers && !isBreak && session.room")
 			button.btn.btn-sm.btn-assign-members(type="button", @pointerdown.stop, @click.stop="$emit('assignMembers', session)") {{ session.roles?.some(r => r.assigned.length < r.capacity) ? $t('Assign Members') : $t('Manage') }}
 
 	.warning.no-print(v-if="warnings?.length")

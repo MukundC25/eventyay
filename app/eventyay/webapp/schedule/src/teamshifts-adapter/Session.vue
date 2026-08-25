@@ -20,7 +20,6 @@ div.c-linear-schedule-session.is-shift-session(
 				.ampm(v-if="startTime.ampm") {{ startTime.ampm }}
 				.duration {{ getPrettyDuration(session.start, session.end) }}
 		.buffer(v-if="!isSchedulePending")
-		.is-live(v-if="showLiveBadge && isLive") live
 	.info(:class="{'has-icons': hasAnyRightIcons, 'grid-session-info': showSessionType, 'has-bottom-icons': hasBottomIcons}", :style="bottomIconsPaddingStyle")
 		template(v-if="showSessionType")
 			.title(:class="gridTitleClampClass", :title="gridMetaTitle(getLocalizedString(session.title))") {{ getLocalizedString(session.title) }}

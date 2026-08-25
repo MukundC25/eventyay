@@ -139,7 +139,7 @@ const api = {
 
     let payload: HttpRequestBody = null
     if (action !== 'DELETE') {
-      const roomId = typeof talk.room === 'object' ? talk.room.id : talk.room
+      const roomId = typeof talk.room === 'object' ? talk.room.id : (talk.room ?? null)
       const duration = talk.duration ?? calculateDuration(talk.start, talk.end)
 
       const convertToUTC = (date: string | Moment | undefined): string | undefined => {

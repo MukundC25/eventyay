@@ -28,8 +28,8 @@
 					.new-break-hint(v-if="newBreakTooltip", id="new-break-hint", role="tooltip") {{ newBreakTooltip }}
 				session(v-for="un in unscheduled", :key="un.id", :session="un", @startDragging="startDragging", :isDragged="draggedSession && un.id === draggedSession.id", @editSession="editorStart($event)", @deleteSession="deleteSessionDirect($event)", @assignMembers="openAssignModal($event)")
 				.deleted-room-sessions(v-if="deletedRoomSessions.length")
-					h3 {{ $t('Deleted Room Sessions') }}
-					p {{ $t('These sessions were assigned to a room that has been deleted. Drag them into another room to restore them to the schedule.') }}
+					h3 {{ caps.showRoles ? $t('Deleted Room Shifts') : $t('Deleted Room Sessions') }}
+					p {{ caps.showRoles ? $t('These shifts were assigned to a room that has been deleted. Drag them into another room to restore them to the schedule.') : $t('These sessions were assigned to a room that has been deleted. Drag them into another room to restore them to the schedule.') }}
 					session(v-for="session in deletedRoomSessions", :key="session.id", :session="session", @startDragging="startDragging", :isDragged="draggedSession && session.id === draggedSession.id")
 			#schedule-wrapper(v-scrollbar.x.y="")
 				.schedule-controls
@@ -410,7 +410,8 @@ const unassignedSortMethods = computed<SortMethod[]>(() => {
 const unscheduled = computed<SessionData[]>(() => {
   if (!schedule.value) return []
   let sessions: SessionData[] = []
-  for (const session of schedule.value.talks.filter((s) => !s.start)) {
+  const isShifts = mode === 'shifts' || mode === 'public-shifts'
+  for (const session of schedule.value.talks.filter((s) => isShifts ? !s.room : !s.start)) {
     sessions.push({
       id: session.id,
       code: session.code,
@@ -877,9 +878,13 @@ async function stopDragging(): Promise<void> {
       if (draggedSession.value.code && !draggedSession.value.deletedRoom) {
         const movedSession = schedule.value?.talks.find((s) => s.id === draggedSession.value!.id)
         if (movedSession) {
-          movedSession.start = null
-          movedSession.end = null
-          movedSession.room = undefined
+          if (mode === 'shifts' || mode === 'public-shifts') {
+            movedSession.room = undefined
+          } else {
+            movedSession.start = null
+            movedSession.end = null
+            movedSession.room = undefined
+          }
           await saveTalk(movedSession)
           await fetchAdditionalScheduleData()
         }
