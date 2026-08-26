@@ -308,7 +308,7 @@ export default {
 				}
 			})
 			// remove gap at the end of the schedule
-			if (compactedSlices[compactedSlices.length - 1].gap) compactedSlices.pop()
+			if (compactedSlices[compactedSlices.length - 1]?.gap) compactedSlices.pop()
 			for (let i = 0; i < compactedSlices.length; i++) {
 				const next = compactedSlices[i + 1]
 				if (next?.datebreak || !next) {

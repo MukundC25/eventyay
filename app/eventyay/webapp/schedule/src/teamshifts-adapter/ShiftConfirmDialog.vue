@@ -10,7 +10,7 @@ dialog.pretalx-modal.shift-confirm-modal(ref="modal", @click="onBackdrop", @canc
 				dd {{ row.value }}
 		p.shift-confirm-error(v-if="error") {{ error }}
 		.shift-confirm-actions
-			button.btn.btn-sm.btn-default(type="button", :disabled="busy", @click="cancel") Cancel
+			button.btn.btn-sm.btn-default(type="button", :disabled="busy", @click="cancel") {{ $t('Cancel') }}
 			button.btn.btn-sm(:class="confirmClass", type="button", :disabled="busy", @click="$emit('confirm')") {{ confirmLabel }}
 </template>
 

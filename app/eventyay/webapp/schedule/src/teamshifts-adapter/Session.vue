@@ -28,9 +28,9 @@ div.c-linear-schedule-session.is-shift-session(
 					.role-name-group
 						span.role-name
 							| {{ roleName(role) }}
-							span.role-restricted-tag(v-if="role.is_restricted") Restricted
+							span.role-restricted-tag(v-if="role.is_restricted") {{ $t('Restricted') }}
 						span.role-divider
-						span.role-badge(:class="'badge-' + getCapacityStatus(role)") {{ assignedList(role).length }}/{{ role.capacity }} needed
+						span.role-badge(:class="'badge-' + getCapacityStatus(role)") {{ capacityLabel(role) }}
 					.role-assignees
 						template(v-if="assignedList(role).length")
 							span.role-assignee(v-for="(user, i) in previewAssignees(role)", :key="user.id || i")
@@ -41,17 +41,17 @@ div.c-linear-schedule-session.is-shift-session(
 								button.role-assignees-more(
 									type="button",
 									:aria-expanded="openAssigneesRoleId != null ? 'true' : 'false'",
-									@click.stop="toggleAssigneesPopover(role, $event)") +{{ hiddenAssigneeCount(role) }} more
-						span.text-muted(v-if="!assignedList(role).length") None
+									@click.stop="toggleAssigneesPopover(role, $event)") +{{ hiddenAssigneeCount(role) }} {{ $t('more') }}
+						span.text-muted(v-if="!assignedList(role).length") {{ $t('None') }}
 				.shift-actions
 					template(v-if="isMyRole(role)")
-						button.btn.btn-sm.btn-danger(type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") Drop
+						button.btn.btn-sm.btn-danger(type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
 					template(v-else-if="canClaimRole(role)")
-						button.btn.btn-sm.btn-primary(type="button", :disabled="claimBusy", @click.stop="openConfirm('claim', role)") Sign Up
+						button.btn.btn-sm.btn-primary(type="button", :disabled="claimBusy", @click.stop="openConfirm('claim', role)") {{ $t('Sign Up') }}
 					template(v-else-if="role.is_restricted")
-						span.text-muted Restricted
+						span.text-muted {{ $t('Restricted') }}
 					template(v-else-if="isRoleFull(role)")
-						span.text-muted Full
+						span.text-muted {{ $t('Full') }}
 		.bottom-info
 			.room(v-if="showRoom && session.room", :title="getLocalizedString(session.room.name)") {{ getLocalizedString(session.room.name) }}
 	assignees-popover(
@@ -192,7 +192,7 @@ export default {
 		},
 		schedulePendingText () {
 			const m = this.translationMessages || {}
-			return m.schedule_pending_secondary || 'Coming soon'
+			return m.schedule_pending_secondary || this.$t('Coming soon')
 		},
 		startTime () {
 			if (this.isSchedulePending) {
@@ -266,16 +266,16 @@ export default {
 			return getLocalizedString(this.session.room?.name) || '—'
 		},
 		confirmTitle () {
-			return this.confirmAction === 'drop' ? 'Drop shift role' : 'Claim shift role'
+			return this.confirmAction === 'drop' ? this.$t('Drop shift role') : this.$t('Claim shift role')
 		},
 		confirmLead () {
 			if (this.confirmAction === 'drop') {
-				return 'Are you sure you want to drop this role? The slot will open again for other team members.'
+				return this.$t('Are you sure you want to drop this role? The slot will open again for other team members.')
 			}
-			return 'Are you sure you want to claim this role for this shift?'
+			return this.$t('Are you sure you want to claim this role for this shift?')
 		},
 		confirmLabel () {
-			return this.confirmAction === 'drop' ? 'Drop' : 'Confirm'
+			return this.confirmAction === 'drop' ? this.$t('Drop') : this.$t('Confirm')
 		},
 		confirmButtonClass () {
 			return this.confirmAction === 'drop' ? 'btn-danger' : 'btn-primary'
@@ -284,24 +284,24 @@ export default {
 			const role = this.confirmRole
 			if (!role) return []
 			const rows = [
-				{ label: 'Shift', value: getLocalizedString(this.session.title) },
-				{ label: 'Role', value: this.roleName(role) },
-				{ label: 'Time', value: this.shiftTimeLabel },
-				{ label: 'Location', value: this.shiftLocationLabel },
+				{ label: this.$t('Shift'), value: getLocalizedString(this.session.title) },
+				{ label: this.$t('Role'), value: this.roleName(role) },
+				{ label: this.$t('Time'), value: this.shiftTimeLabel },
+				{ label: this.$t('Location'), value: this.shiftLocationLabel },
 			]
 			if (this.confirmAction === 'drop') {
 				const mine = getAssignedList(role).find(user => user.id === this.currentUserId)
 				const selfAssigned = mine ? mine.self_assigned !== false && !mine.assigned_by_name : true
 				rows.push({
-					label: 'Status',
-					value: selfAssigned ? 'Self assigned' : `Organizer assigned${mine?.assigned_by_name ? ` by ${mine.assigned_by_name}` : ''}`,
+					label: this.$t('Status'),
+					value: selfAssigned ? this.$t('Self assigned') : `${this.$t('Organizer assigned')}${mine?.assigned_by_name ? ` by ${mine.assigned_by_name}` : ''}`,
 				})
 				rows.push({
-					label: 'Name',
+					label: this.$t('Name'),
 					value: mine?.name || this.currentUserName || '—',
 				})
 			} else if (this.currentUserName) {
-				rows.push({ label: 'Name', value: this.currentUserName })
+				rows.push({ label: this.$t('Name'), value: this.currentUserName })
 			}
 			return rows
 		},
@@ -309,6 +309,9 @@ export default {
 	methods: {
 		assignedList (role) {
 			return getAssignedList(role)
+		},
+		capacityLabel (role) {
+			return this.$t('{{assigned}}/{{capacity}} needed', { assigned: getAssignedList(role).length, capacity: role.capacity })
 		},
 		closeAssigneesPopover () {
 			this.openAssigneesRoleId = null
@@ -366,7 +369,7 @@ export default {
 				})
 				const data = await response.json().catch(() => ({}))
 				if (!response.ok) {
-					this.confirmError = data.error || 'Could not update this shift.'
+					this.confirmError = data.error || this.$t('Could not update this shift.')
 					return
 				}
 				if (Array.isArray(data.roles)) {
@@ -377,7 +380,7 @@ export default {
 				}
 				this.closeConfirm()
 			} catch {
-				this.confirmError = 'Could not update this shift.'
+				this.confirmError = this.$t('Could not update this shift.')
 			} finally {
 				this.claimBusy = false
 			}
