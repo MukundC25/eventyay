@@ -136,3 +136,39 @@ export function withdrawUrl (eventUrl, session) {
 	const base = (eventUrl || '').replace(/\/?$/, '/')
 	return `${base}teamshifts/shifts/${getShiftId(session)}/withdraw/`
 }
+
+/**
+ * Compute overlap-aware grid row placement for a shift session.
+ *
+ * When multiple shifts occupy the same room and overlap in time, they are
+ * stacked sequentially (each starting where the previous one ends) rather
+ * than rendered on top of each other. This logic only applies to shift
+ * schedules — talk schedules never have overlapping sessions in the same room.
+ *
+ * @param {Object} session - The session to position
+ * @param {Array} allSessions - All sessions in the grid
+ * @returns {{ startName: string, endName: string|null }|null}
+ *   Returns adjusted start/end slice names if stacking is needed, null otherwise.
+ */
+export function computeShiftOverlapPlacement (session, allSessions) {
+	if (!session.start || !session.end) return null
+
+	const overlapping = allSessions.filter(s => {
+		if (s.id === session.id) return true
+		if (!s.room || !s.start || !s.end) return false
+		if (s.room !== session.room) return false
+		return s.start.isBefore(session.end) && s.end.isAfter(session.start)
+	}).sort((a, b) => {
+		const diff = a.start.diff(b.start)
+		return diff !== 0 ? diff : a.id - b.id
+	})
+
+	if (overlapping.length <= 1) return null
+
+	const myIndex = overlapping.findIndex(s => s.id === session.id)
+	if (myIndex === 0) {
+		return { startName: null, endName: null }
+	}
+	const prev = overlapping[myIndex - 1]
+	return { startName: prev.end, endName: null }
+}

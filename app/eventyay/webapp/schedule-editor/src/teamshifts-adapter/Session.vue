@@ -1,5 +1,5 @@
 <template lang="pug">
-.c-linear-schedule-session(:style="style", @pointerdown.stop="onPointerDown", :class="classes")
+.c-linear-schedule-session.is-shift-session(:style="style", @pointerdown.stop="onPointerDown", :class="classes")
 	.time-box
 		.start(:class="{'has-ampm': startTime?.ampm}", v-if="startTime")
 			.time {{ startTime.time }}
@@ -73,7 +73,7 @@ import { getLocalizedString } from '~/utils'
 import { getCapabilities, resolveMode, resolveSessionKind, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/teamshifts-adapter'
 import type { Capabilities } from '~/teamshifts-adapter/types'
 import type { RoleAssignment } from '~/schemas'
-import AssigneesPopover from '~/components/AssigneesPopover.vue'
+import AssigneesPopover from '~/teamshifts-adapter/AssigneesPopover.vue'
 
 const ASSIGNEE_PREVIEW_LIMIT = 2
 
@@ -315,7 +315,7 @@ function onPointerDown(event: PointerEvent): void {
 </script>
 
 <style lang="stylus">
-.c-linear-schedule-session
+.c-linear-schedule-session.is-shift-session
 	.roles-list
 		display: flex
 		flex-direction: column

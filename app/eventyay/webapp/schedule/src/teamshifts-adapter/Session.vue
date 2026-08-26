@@ -1,6 +1,6 @@
 <template lang="pug">
 div.c-linear-schedule-session.is-shift-session(
-	:class="{faved, 'has-date': showDate, 'short-session': isShortSession, 'grid-very-short': isGridVeryShort, 'schedule-pending-session': isSchedulePending}",
+	:class="{'has-date': showDate, 'short-session': isShortSession, 'grid-very-short': isGridVeryShort, 'schedule-pending-session': isSchedulePending}",
 	:style="style")
 	.time-box
 		.start.schedule-pending(v-if="isSchedulePending")
@@ -20,12 +20,8 @@ div.c-linear-schedule-session.is-shift-session(
 				.ampm(v-if="startTime.ampm") {{ startTime.ampm }}
 				.duration {{ getPrettyDuration(session.start, session.end) }}
 		.buffer(v-if="!isSchedulePending")
-	.info(:class="{'has-icons': hasAnyRightIcons, 'grid-session-info': showSessionType, 'has-bottom-icons': hasBottomIcons}", :style="bottomIconsPaddingStyle")
-		template(v-if="showSessionType")
-			.title(:class="gridTitleClampClass", :title="gridMetaTitle(getLocalizedString(session.title))") {{ getLocalizedString(session.title) }}
-			.session-type(v-if="sessionTypeLabel", :class="{'single-line-clamped': isGridVeryShort}", :title="gridMetaTitle(sessionTypeLabel)") {{ sessionTypeLabel }}
-		template(v-else)
-			.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
+	.info
+		.title(:class="{'title-clamped': isShortSession}") {{ getLocalizedString(session.title) }}
 		.roles-list(v-if="session.roles && session.roles.length")
 			.role-item(v-for="(role, index) in session.roles", :key="role.id ?? index")
 				.role-content
@@ -57,21 +53,7 @@ div.c-linear-schedule-session.is-shift-session(
 					template(v-else-if="isRoleFull(role)")
 						span.text-muted Full
 		.bottom-info
-			.track(v-if="session.track", :class="{'single-line-clamped': isGridVeryShort}", :title="gridMetaTitle(getLocalizedString(session.track.name))") {{ getLocalizedString(session.track.name) }}
 			.room(v-if="showRoom && session.room", :title="getLocalizedString(session.room.name)") {{ getLocalizedString(session.room.name) }}
-		.session-bottom-icons(v-if="hasBottomIcons")
-			.interpretation(v-if="showRoomInterpretation", :title="roomInterpretationTooltip", :aria-label="roomInterpretationTooltip")
-				svg.globe-icon(viewBox="0 0 24 24", width="18", height="18", fill="currentColor", xmlns="http://www.w3.org/2000/svg", aria-hidden="true")
-					path(d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z")
-			.do_not_record(v-if="session.do_not_record", :title="doNotRecordTooltip", :aria-label="doNotRecordTooltip")
-				svg(viewBox="0 0 116.59076 116.59076", width="24px", height="24px", fill="none", xmlns="http://www.w3.org/2000/svg", aria-hidden="true")
-					g(transform="translate(-9.3465481,-5.441411)")
-						rect(style="fill:#000000;fill-opacity;stroke:none;stroke-width:11.2589;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", width="52.753284", height="39.619537", x="35.496307", y="43.927021", rx="5.5179553", ry="7.573648")
-						path(style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:18.7997;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="M 99.787546,47.04792 V 80.425654 L 77.727407,63.736793 Z")
-						path(style="fill:none;stroke:#b23e65;stroke-width:12;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="m 35.553146,95.825578 64.177559,-64.17757 m 16.294055,32.08879 A 48.382828,48.382828 0 0 1 67.641925,112.11961 48.382828,48.382828 0 0 1 19.259099,63.736798 48.382828,48.382828 0 0 1 67.641925,15.353968 48.382828,48.382828 0 0 1 116.02476,63.736798 Z")
-	.stream-indicator(v-if="canOpenStream", :class="{live: isLive}", :title="streamTooltip", @click.prevent.stop="openStream")
-		svg(viewBox="0 0 24 24", width="20", height="20", fill="currentColor", xmlns="http://www.w3.org/2000/svg")
-			path(d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z")
 	assignees-popover(
 		:open="openAssigneesRoleId != null",
 		:title="assigneesPopoverTitle",
@@ -94,7 +76,6 @@ div.c-linear-schedule-session.is-shift-session(
 </template>
 
 <script>
-import TalkSession from '../components/Session.vue'
 import ShiftConfirmDialog from './ShiftConfirmDialog.vue'
 import AssigneesPopover from './AssigneesPopover.vue'
 import { getLocalizedString, getPrettyDuration, getSessionTime, getCsrfToken } from '../utils'
@@ -126,10 +107,32 @@ function placeAssigneesPopover (anchorEl) {
 
 export default {
 	name: 'TeamshiftsSession',
-	extends: TalkSession,
 	components: {
 		ShiftConfirmDialog,
 		AssigneesPopover,
+	},
+	props: {
+		now: Object,
+		session: Object,
+		showRoom: {
+			type: Boolean,
+			default: true,
+		},
+		showDate: {
+			type: Boolean,
+			default: false,
+		},
+		hasAmPm: {
+			type: Boolean,
+			default: false,
+		},
+		locale: String,
+		timezone: String,
+	},
+	inject: {
+		eventUrl: { default: null },
+		scheduleData: { default: null },
+		translationMessages: { default: () => ({}) },
 	},
 	data () {
 		return {
@@ -168,13 +171,53 @@ export default {
 		document.removeEventListener('pointerdown', this._onAssigneesDocPointerDown, true)
 	},
 	computed: {
+		effectiveTimezone () {
+			return this.timezone ?? this.scheduleData?.timezone
+		},
+		effectiveHasAmPm () {
+			if (this.timezone != null) return this.hasAmPm
+			return this.scheduleData?.hasAmPm ?? this.hasAmPm
+		},
 		style () {
 			return {
 				'--track-color': getShiftTrackColor(this.session?.roles),
 			}
 		},
-		hasAnyRightIcons () {
-			return this.canOpenStream || this.session.do_not_record
+		isSchedulePending () {
+			return Boolean(this.session.schedule_pending || !this.session.start)
+		},
+		schedulePendingText () {
+			const m = this.translationMessages || {}
+			return m.schedule_pending_secondary || 'Coming soon'
+		},
+		startTime () {
+			if (this.isSchedulePending) {
+				return { time: this.schedulePendingText }
+			}
+			return getSessionTime(this.session, this.effectiveTimezone, this.locale, this.effectiveHasAmPm)
+		},
+		weekdayLabel () {
+			if (!this.session.start) return ''
+			return this.session.start.clone().tz(this.effectiveTimezone).locale(this.locale || 'en').format('ddd')
+		},
+		dayMonthLabel () {
+			if (!this.session.start) return ''
+			return this.session.start.clone().tz(this.effectiveTimezone).locale(this.locale || 'en').format('D MMM')
+		},
+		sessionDurationMinutes () {
+			if (this.session.duration) return Number(this.session.duration)
+			if (this.session.start && this.session.end?.diff) {
+				return Math.round(this.session.end.diff(this.session.start, 'minutes', true))
+			}
+			return 0
+		},
+		isShortSession () {
+			const minutes = this.sessionDurationMinutes
+			return minutes > 0 && minutes <= 15
+		},
+		isGridVeryShort () {
+			const minutes = this.sessionDurationMinutes
+			return minutes > 0 && minutes <= 10
 		},
 		currentUserId () {
 			return getCurrentUserId(this.scheduleData)
@@ -309,7 +352,7 @@ export default {
 					Accept: 'application/json',
 					'X-Requested-With': 'XMLHttpRequest',
 				}
-				const csrf = getCsrfToken() || (document.cookie.match(/(?:^|; )csrftoken=([^;]+)/) || [])[1] || ''
+				const csrf = getCsrfToken()
 				if (csrf) headers['X-CSRFToken'] = csrf
 				const response = await fetch(url, {
 					method: 'POST',
@@ -435,17 +478,6 @@ export default {
 				margin-top: 4px
 		.buffer
 			flex: auto
-		.is-live
-			align-self: stretch
-			text-align: center
-			font-weight: 600
-			padding: 2px 4px
-			border-radius: 4px
-			margin: 0 -8px 0 -4px
-			background-color: $clr-danger
-			color: $clr-primary-text-dark
-			letter-spacing: 0.5px
-			text-transform: uppercase
 	&.has-date
 		.time-box
 			width: 88px
@@ -455,7 +487,6 @@ export default {
 		display: flex
 		flex-direction: column
 		padding: 8px
-		padding-right: 8px
 		border: border-separator()
 		border-left: none
 		border-radius: 0 6px 6px 0
@@ -465,24 +496,12 @@ export default {
 			font-size: 16px
 			font-weight: 500
 			margin-bottom: 4px
-		.session-type
-			font-size: 12px
-			font-weight: 600
-			text-transform: uppercase
-			letter-spacing: 0.04em
-			color: $clr-secondary-text-light
-			margin-bottom: 2px
 		.bottom-info
 			flex: auto
 			display: flex
 			align-items: flex-end
 			gap: 4px
 			min-width: 0
-			.track
-				flex: 1 1 0%
-				min-width: 0
-				color: var(--track-color)
-				ellipsis()
 			.room
 				flex: 1
 				min-width: 0
@@ -491,23 +510,6 @@ export default {
 				white-space: nowrap
 				overflow: hidden
 				text-overflow: ellipsis
-	.stream-indicator
-		position: absolute
-		right: 6px
-		top: 50%
-		transform: translateY(-50%)
-		width: 32px
-		height: 32px
-		display: flex
-		align-items: center
-		justify-content: center
-		border-radius: 50%
-		background-color: var(--track-color)
-		color: $clr-primary-text-dark
-		cursor: pointer
-		z-index: 20
-		&.live
-			background-color: $clr-danger
 	.roles-list
 		display: flex
 		flex-direction: column

@@ -145,6 +145,7 @@
 									button.assign-btn(type="button", @click="assignMember(role.id)", :disabled="assigningWaiting") {{ $t('Assign') }}
 
 		confirm-dialog(
+			v-if="caps.showRoles",
 			ref="confirmDialogRef",
 			:title="confirmDialogTitle",
 			:lead="confirmDialogLead",
@@ -460,6 +461,8 @@ const unscheduled = computed<SessionData[]>(() => {
 
 const deletedRoomSessions = computed<SessionData[]>(() => {
   if (!schedule.value) return []
+  const isShifts = mode === 'shifts' || mode === 'public-shifts'
+  if (isShifts) return []
   return schedule.value.talks
     .filter(
       (session) =>
@@ -703,20 +706,31 @@ async function editorSave(): Promise<void> {
 
 async function editorDelete(): Promise<void> {
   if (!editorSession.value) return
-  const deleted = await deleteSessionById(editorSession.value.id)
+  let deleted = false
+  if (mode === 'shifts' || mode === 'public-shifts') {
+    deleted = await deleteShiftById(editorSession.value.id)
+  } else {
+    if (editorSession.value.code) return
+    deleted = await deleteTalkBreakById(editorSession.value.id)
+  }
   if (deleted) {
     editorSession.value = null
   }
 }
 
 async function deleteSessionDirect(session: SessionData | Talk): Promise<void> {
-  await deleteSessionById(session.id)
+  if (mode === 'shifts' || mode === 'public-shifts') {
+    await deleteShiftById(session.id)
+  } else {
+    if (session.code) return
+    await deleteTalkBreakById(session.id)
+  }
 }
 
-async function deleteSessionById(id: number): Promise<boolean> {
+async function deleteShiftById(id: number): Promise<boolean> {
   const confirmed = await showConfirmDialog({
     title: $t('Delete shift'),
-    lead: $t('Are you sure you want to delete this session? This action cannot be undone.'),
+    lead: $t('Are you sure you want to delete this shift? This action cannot be undone.'),
     confirmLabel: $t('Delete'),
     confirmClass: 'btn-danger',
   })
@@ -731,8 +745,28 @@ async function deleteSessionById(id: number): Promise<boolean> {
     await fetchAdditionalScheduleData()
     return true
   } catch (error) {
-    console.error('Failed to delete session', error)
-    assignModalError.value = $t('Failed to delete session. Please try again.')
+    console.error('Failed to delete shift', error)
+    window.alert($t('Failed to delete shift. Please try again.'))
+    return false
+  } finally {
+    editorSessionWaiting.value = false
+  }
+}
+
+async function deleteTalkBreakById(id: number): Promise<boolean> {
+  if (!window.confirm($t('Are you sure you want to delete this break?'))) return false
+
+  editorSessionWaiting.value = true
+  try {
+    await api.deleteTalk({ id })
+    if (schedule.value) {
+      schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
+    }
+    await fetchAdditionalScheduleData()
+    return true
+  } catch (error) {
+    console.error('Failed to delete break', error)
+    window.alert($t('Failed to delete break. Please try again.'))
     return false
   } finally {
     editorSessionWaiting.value = false
@@ -804,7 +838,7 @@ async function unassignMember(roleId: number, userId: number): Promise<void> {
   if (!assigningSession.value) return
   const confirmed = await showConfirmDialog({
     title: $t('Unassign member'),
-    lead: $t('Are you sure you want to unassign this member from the shift?'),
+    lead: $t('Are you sure you want to unassign this member?'),
     confirmLabel: $t('Unassign'),
     confirmClass: 'btn-danger',
   })
@@ -1248,19 +1282,18 @@ onUnmounted(() => {
 	width: 100%
 	height: 100%
 	background-color: rgba(0, 0, 0, 0.5)
-	display: flex
-	align-items: center
-	justify-content: center
-	padding: 24px
 
 	#session-editor
 		background-color: $clr-white
 		border-radius: 4px
 		padding: 32px 40px
+		position: absolute
+		top: 50%
+		left: 50%
+		transform: translate(-50%, -50%)
 		width: 680px
 		max-height: calc(100vh - 48px)
 		overflow-y: auto
-		position: relative
 
 		.session-editor-title
 			font-size: 22px

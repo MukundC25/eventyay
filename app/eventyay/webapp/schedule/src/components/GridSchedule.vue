@@ -91,7 +91,7 @@ import TalkSession from './Session'
 import ShiftSession from '../teamshifts-adapter/Session.vue'
 import GridBreak from './GridBreak'
 import { getLocalizedString } from '../utils'
-import { isShiftSchedule } from '../teamshifts-adapter'
+import { isShiftSchedule, computeShiftOverlapPlacement } from '../teamshifts-adapter'
 
 const getSliceName = function (date) {
 	return `slice-${date.format('MM-DD-HH-mm')}`
@@ -464,26 +464,16 @@ export default {
 			const roomIndex = this.roomIndexLookup.has(session.room) ? this.roomIndexLookup.get(session.room) : -1
 			const data = this.scheduleData?.value ?? this.scheduleData
 			if (isShiftSchedule(data) && session.start && session.end) {
-				const overlapping = this.sessions.filter(s => {
-					if (s.id === session.id) return true
-					if (!s.room || !s.start || !s.end) return false
-					if (s.room !== session.room) return false
-					return s.start.isBefore(session.end) && s.end.isAfter(session.start)
-				}).sort((a, b) => {
-					const diff = a.start.diff(b.start)
-					return diff !== 0 ? diff : a.id - b.id
-				})
-				if (overlapping.length > 1) {
-					const myIndex = overlapping.findIndex(s => s.id === session.id)
-					if (myIndex === 0) {
+				const placement = computeShiftOverlapPlacement(session, this.sessions)
+				if (placement) {
+					if (placement.startName) {
 						return {
-							'grid-row-start': getSliceName(session.start),
+							'grid-row-start': getSliceName(placement.startName),
 							'grid-column': roomIndex > -1 ? roomIndex + 2 : null
 						}
 					}
-					const prev = overlapping[myIndex - 1]
 					return {
-						'grid-row-start': getSliceName(prev.end),
+						'grid-row-start': getSliceName(session.start),
 						'grid-column': roomIndex > -1 ? roomIndex + 2 : null
 					}
 				}
