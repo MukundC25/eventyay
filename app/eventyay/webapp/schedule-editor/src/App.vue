@@ -145,7 +145,6 @@
 									button.assign-btn(type="button", @click="assignMember(role.id)", :disabled="assigningWaiting") {{ $t('Assign') }}
 
 		confirm-dialog(
-			v-if="caps.showRoles",
 			ref="confirmDialogRef",
 			:title="confirmDialogTitle",
 			:lead="confirmDialogLead",
@@ -294,29 +293,50 @@ const confirmDialogClass = ref('btn-primary')
 const confirmDialogBusy = ref(false)
 const confirmDialogError = ref('')
 let confirmDialogResolve: ((value: boolean) => void) | null = null
+let confirmDialogAction: (() => Promise<void>) | null = null
 
-function showConfirmDialog(opts: { title: string; lead: string; confirmLabel: string; confirmClass?: string }): Promise<boolean> {
+function showConfirmDialog(opts: { title: string; lead: string; confirmLabel: string; confirmClass?: string; onConfirm?: () => Promise<void> }): Promise<boolean> {
   confirmDialogTitle.value = opts.title
   confirmDialogLead.value = opts.lead
   confirmDialogLabel.value = opts.confirmLabel
   confirmDialogClass.value = opts.confirmClass || 'btn-primary'
   confirmDialogBusy.value = false
   confirmDialogError.value = ''
+  confirmDialogAction = opts.onConfirm || null
   return new Promise((resolve) => {
     confirmDialogResolve = resolve
     nextTick(() => confirmDialogRef.value?.show())
   })
 }
 
-function onConfirmDialogConfirm() {
-  confirmDialogRef.value?.close()
-  confirmDialogResolve?.(true)
-  confirmDialogResolve = null
+async function onConfirmDialogConfirm() {
+  if (confirmDialogAction) {
+    confirmDialogBusy.value = true
+    confirmDialogError.value = ''
+    try {
+      await confirmDialogAction()
+      confirmDialogRef.value?.close()
+      confirmDialogResolve?.(true)
+    } catch (error) {
+      confirmDialogError.value = (error as Error).message || $t('An error occurred. Please try again.')
+      confirmDialogResolve?.(false)
+    } finally {
+      confirmDialogBusy.value = false
+      confirmDialogResolve = null
+      confirmDialogAction = null
+    }
+  } else {
+    confirmDialogRef.value?.close()
+    confirmDialogResolve?.(true)
+    confirmDialogResolve = null
+    confirmDialogAction = null
+  }
 }
 
 function onConfirmDialogCancel() {
   confirmDialogResolve?.(false)
   confirmDialogResolve = null
+  confirmDialogAction = null
 }
 const isUnassigning = ref<boolean>(false)
 const locales = ref<string[]>(['en'])
@@ -728,49 +748,35 @@ async function deleteSessionDirect(session: SessionData | Talk): Promise<void> {
 }
 
 async function deleteShiftById(id: number): Promise<boolean> {
-  const confirmed = await showConfirmDialog({
+  return showConfirmDialog({
     title: $t('Delete shift'),
     lead: $t('Are you sure you want to delete this shift? This action cannot be undone.'),
     confirmLabel: $t('Delete'),
     confirmClass: 'btn-danger',
+    onConfirm: async () => {
+      await api.deleteTalk({ id })
+      if (schedule.value) {
+        schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
+      }
+      await fetchAdditionalScheduleData()
+    },
   })
-  if (!confirmed) return false
-
-  editorSessionWaiting.value = true
-  try {
-    await api.deleteTalk({ id })
-    if (schedule.value) {
-      schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
-    }
-    await fetchAdditionalScheduleData()
-    return true
-  } catch (error) {
-    console.error('Failed to delete shift', error)
-    window.alert($t('Failed to delete shift. Please try again.'))
-    return false
-  } finally {
-    editorSessionWaiting.value = false
-  }
 }
 
 async function deleteTalkBreakById(id: number): Promise<boolean> {
-  if (!window.confirm($t('Are you sure you want to delete this break?'))) return false
-
-  editorSessionWaiting.value = true
-  try {
-    await api.deleteTalk({ id })
-    if (schedule.value) {
-      schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
-    }
-    await fetchAdditionalScheduleData()
-    return true
-  } catch (error) {
-    console.error('Failed to delete break', error)
-    window.alert($t('Failed to delete break. Please try again.'))
-    return false
-  } finally {
-    editorSessionWaiting.value = false
-  }
+  return showConfirmDialog({
+    title: $t('Delete break'),
+    lead: $t('Are you sure you want to delete this break?'),
+    confirmLabel: $t('Delete'),
+    confirmClass: 'btn-danger',
+    onConfirm: async () => {
+      await api.deleteTalk({ id })
+      if (schedule.value) {
+        schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
+      }
+      await fetchAdditionalScheduleData()
+    },
+  })
 }
 
 async function openAssignModal(session: SessionData | Talk): Promise<void> {
