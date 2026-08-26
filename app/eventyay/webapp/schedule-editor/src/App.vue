@@ -780,12 +780,7 @@ async function openAssignModal(session: SessionData | Talk): Promise<void> {
     for (const role of assigningSession.value.roles) {
       selectedMemberIds.value[String(role.id)] = undefined
     }
-    const firstRoleId = assigningSession.value.roles[0].id
-    await loadMembers(firstRoleId)
-    const members = availableMembersByRole.value[String(firstRoleId)] || []
-    for (const role of assigningSession.value.roles) {
-      availableMembersByRole.value[String(role.id)] = members
-    }
+    await Promise.all(assigningSession.value.roles.map((role) => loadMembers(role.id)))
   }
 }
 

@@ -208,15 +208,20 @@ const onAssigneesDocPointerDown = (event: PointerEvent) => {
   })
   if (inside) return
   closeAssigneesPopover()
-  event.stopPropagation()
+}
+
+const onScroll = () => {
+  if (openAssigneesRoleId.value != null) closeAssigneesPopover()
 }
 
 onMounted(() => {
   document.addEventListener('pointerdown', onAssigneesDocPointerDown, true)
+  window.addEventListener('scroll', onScroll, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onAssigneesDocPointerDown, true)
+  window.removeEventListener('scroll', onScroll, true)
 })
 
 const classes = computed(() => {

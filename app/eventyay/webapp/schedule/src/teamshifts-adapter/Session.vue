@@ -163,12 +163,16 @@ export default {
 			})
 			if (inside) return
 			this.closeAssigneesPopover()
-			event.stopPropagation()
+		}
+		this._onScroll = () => {
+			if (this.openAssigneesRoleId != null) this.closeAssigneesPopover()
 		}
 		document.addEventListener('pointerdown', this._onAssigneesDocPointerDown, true)
+		window.addEventListener('scroll', this._onScroll, true)
 	},
 	beforeUnmount () {
 		document.removeEventListener('pointerdown', this._onAssigneesDocPointerDown, true)
+		window.removeEventListener('scroll', this._onScroll, true)
 	},
 	computed: {
 		effectiveTimezone () {
@@ -411,7 +415,6 @@ export default {
 	min-height: auto
 	margin: 8px 0
 	margin-right: 8px
-	overflow: hidden
 	color: rgb(13 15 16)
 	position: relative
 	font-size: 14px

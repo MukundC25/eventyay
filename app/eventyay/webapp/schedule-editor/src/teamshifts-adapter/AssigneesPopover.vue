@@ -1,15 +1,16 @@
 <template lang="pug">
-.role-assignees-popover(
-	v-if="open",
-	:style="panelStyle",
-	@click.stop="",
-	@pointerdown.stop="")
-	.role-assignees-popover-title {{ title }}
-	ul.role-assignees-popover-list
-		li(v-for="(user, i) in assignees", :key="user.id || i")
-			svg.role-user-icon(viewBox="0 0 24 24", aria-hidden="true")
-				path(fill="currentColor", d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z")
-			span.role-assignees-popover-name {{ user.name }}
+teleport(to="body")
+	.role-assignees-popover(
+		v-if="open",
+		:style="panelStyle",
+		@click.stop="",
+		@pointerdown.stop="")
+		.role-assignees-popover-title {{ title }}
+		ul.role-assignees-popover-list
+			li(v-for="(user, i) in assignees", :key="user.id || i")
+				svg.role-user-icon(viewBox="0 0 24 24", aria-hidden="true")
+					path(fill="currentColor", d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z")
+				span.role-assignees-popover-name {{ user.name }}
 </template>
 
 <script lang="ts" setup>
