@@ -145,6 +145,7 @@
 									button.assign-btn(type="button", @click="assignMember(role.id)", :disabled="assigningWaiting") {{ $t('Assign') }}
 
 		confirm-dialog(
+			v-if="caps.showRoles",
 			ref="confirmDialogRef",
 			:title="confirmDialogTitle",
 			:lead="confirmDialogLead",
@@ -154,6 +155,15 @@
 			:error="confirmDialogError",
 			@confirm="onConfirmDialogConfirm",
 			@cancel="onConfirmDialogCancel")
+
+		dialog.break-confirm-dialog(ref="breakConfirmDialogEl", @click="onBreakDialogBackdrop", @cancel.prevent="cancelBreakDelete")
+			.dialog-inner(@click.stop="")
+				h3 {{ breakConfirmTitle }}
+				p {{ breakConfirmLead }}
+				p.break-confirm-error(v-if="breakConfirmError") {{ breakConfirmError }}
+				.break-confirm-actions
+					button.btn.btn-sm.btn-default(type="button", :disabled="breakConfirmBusy", @click="cancelBreakDelete") {{ $t('Cancel') }}
+					button.btn.btn-sm.btn-danger(type="button", :disabled="breakConfirmBusy", @click="confirmBreakDelete") {{ $t('Delete') }}
 
 	bunt-progress-circular(v-else, size="huge", :page="true")
 </template>
@@ -294,6 +304,59 @@ const confirmDialogBusy = ref(false)
 const confirmDialogError = ref('')
 let confirmDialogResolve: ((value: boolean) => void) | null = null
 let confirmDialogAction: (() => Promise<void>) | null = null
+
+const breakConfirmDialogEl = ref<HTMLDialogElement | null>(null)
+const breakConfirmTitle = ref('')
+const breakConfirmLead = ref('')
+const breakConfirmError = ref('')
+const breakConfirmBusy = ref(false)
+let breakConfirmResolve: ((value: boolean) => void) | null = null
+let breakDeleteId: number | null = null
+
+function showBreakConfirmDialog(id: number): Promise<boolean> {
+  breakDeleteId = id
+  breakConfirmTitle.value = $t('Delete break')
+  breakConfirmLead.value = $t('Are you sure you want to delete this break?')
+  breakConfirmError.value = ''
+  breakConfirmBusy.value = false
+  return new Promise((resolve) => {
+    breakConfirmResolve = resolve
+    nextTick(() => breakConfirmDialogEl.value?.showModal?.())
+  })
+}
+
+async function confirmBreakDelete() {
+  if (!breakDeleteId) return
+  breakConfirmBusy.value = true
+  breakConfirmError.value = ''
+  try {
+    await api.deleteTalk({ id: breakDeleteId })
+    if (schedule.value) {
+      schedule.value.talks = schedule.value.talks.filter((s) => s.id !== breakDeleteId)
+    }
+    await fetchAdditionalScheduleData()
+    breakConfirmDialogEl.value?.close()
+    breakConfirmResolve?.(true)
+  } catch (error) {
+    breakConfirmError.value = $t('Failed to delete break. Please try again.')
+    breakConfirmResolve?.(false)
+  } finally {
+    breakConfirmBusy.value = false
+    breakConfirmResolve = null
+    breakDeleteId = null
+  }
+}
+
+function cancelBreakDelete() {
+  breakConfirmDialogEl.value?.close()
+  breakConfirmResolve?.(false)
+  breakConfirmResolve = null
+  breakDeleteId = null
+}
+
+function onBreakDialogBackdrop(event: MouseEvent) {
+  if (event.target === breakConfirmDialogEl.value) cancelBreakDelete()
+}
 
 function showConfirmDialog(opts: { title: string; lead: string; confirmLabel: string; confirmClass?: string; onConfirm?: () => Promise<void> }): Promise<boolean> {
   confirmDialogTitle.value = opts.title
@@ -764,19 +827,7 @@ async function deleteShiftById(id: number): Promise<boolean> {
 }
 
 async function deleteTalkBreakById(id: number): Promise<boolean> {
-  return showConfirmDialog({
-    title: $t('Delete break'),
-    lead: $t('Are you sure you want to delete this break?'),
-    confirmLabel: $t('Delete'),
-    confirmClass: 'btn-danger',
-    onConfirm: async () => {
-      await api.deleteTalk({ id })
-      if (schedule.value) {
-        schedule.value.talks = schedule.value.talks.filter((s) => s.id !== id)
-      }
-      await fetchAdditionalScheduleData()
-    },
-  })
+  return showBreakConfirmDialog(id)
 }
 
 async function openAssignModal(session: SessionData | Talk): Promise<void> {
@@ -1443,4 +1494,47 @@ onUnmounted(() => {
 			&:disabled
 				opacity: 0.6
 				cursor: default
+.break-confirm-dialog
+	border: none
+	border-radius: 8px
+	padding: 0
+	max-width: 400px
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2)
+	&::backdrop
+		background: rgba(0, 0, 0, 0.5)
+	.dialog-inner
+		padding: 24px
+		h3
+			margin: 0 0 12px
+			font-size: 18px
+		p
+			margin: 0 0 16px
+			color: $clr-grey-700
+			line-height: 1.4
+		.break-confirm-error
+			color: #d9534f
+			margin: 0 0 12px
+		.break-confirm-actions
+			display: flex
+			justify-content: flex-end
+			gap: 8px
+			.btn
+				display: inline-block
+				padding: 6px 12px
+				font-size: 14px
+				line-height: 1.4
+				border-radius: 4px
+				border: 1px solid transparent
+				cursor: pointer
+				&:disabled
+					opacity: 0.65
+					cursor: default
+			.btn-default
+				background: #fff
+				border-color: #ccc
+				color: #333
+			.btn-danger
+				background: #d9534f
+				border-color: #d9534f
+				color: #fff
 </style>
