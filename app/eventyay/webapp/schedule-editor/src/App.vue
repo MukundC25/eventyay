@@ -1496,14 +1496,14 @@ onUnmounted(() => {
 				cursor: default
 .break-confirm-dialog
 	border: none
-	border-radius: 8px
+	border-radius: 4px
 	padding: 0
 	max-width: 400px
 	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2)
 	&::backdrop
 		background: rgba(0, 0, 0, 0.5)
 	.dialog-inner
-		padding: 24px
+		padding: 32px 40px
 		h3
 			margin: 0 0 12px
 			font-size: 18px
@@ -1512,7 +1512,7 @@ onUnmounted(() => {
 			color: $clr-grey-700
 			line-height: 1.4
 		.break-confirm-error
-			color: #d9534f
+			color: $clr-danger
 			margin: 0 0 12px
 		.break-confirm-actions
 			display: flex
@@ -1530,11 +1530,9 @@ onUnmounted(() => {
 					opacity: 0.65
 					cursor: default
 			.btn-default
-				background: #fff
-				border-color: #ccc
-				color: #333
+				background: $clr-white
+				border-color: $clr-dividers-light
+				color: $clr-grey-900
 			.btn-danger
-				background: #d9534f
-				border-color: #d9534f
-				color: #fff
+				button-style(color: $clr-danger, text-color: $clr-white)
 </style>
