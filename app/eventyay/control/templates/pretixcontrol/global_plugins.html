@@ -17,19 +17,22 @@
 
   <ul class="nav nav-tabs" role="tablist" data-global-plugins-tabs>
     <li role="presentation" class="{% if active_tab == 'platform' %}active{% endif %}">
-      <a href="#tab-platform" aria-controls="tab-platform" role="tab" data-toggle="tab">
+      <a href="#tab-platform" aria-controls="tab-platform" role="tab" data-toggle="tab"
+         data-tab-key="platform">
         {% trans "Platform Plugins" %}
       </a>
     </li>
     <li role="presentation" class="{% if active_tab == 'external' %}active{% endif %}">
-      <a href="#tab-external" aria-controls="tab-external" role="tab" data-toggle="tab">
+      <a href="#tab-external" aria-controls="tab-external" role="tab" data-toggle="tab"
+         data-tab-key="external">
         {% trans "External Plugins" %}
       </a>
     </li>
   </ul>
 
-  <form method="post" action="">
+  <form method="post" action="" data-global-plugins-form>
     {% csrf_token %}
+    <input type="hidden" name="active_tab" value="{{ active_tab }}" data-active-tab-field>
     <div class="tab-content">
 
       {# ── Platform Plugins tab ── #}
@@ -53,7 +56,9 @@
             </thead>
             <tbody>
               {% for row in platform_plugin_rows %}
-                <tr data-plugin-row data-plugin-type="platform">
+                <tr data-plugin-row data-plugin-type="platform"
+                    data-plugin-name="{{ row.name }}"
+                    data-usage-count="{{ row.usage_count }}">
                   <td>
                     <strong>{{ row.name }}</strong>
                     {% if row.version %}
@@ -81,6 +86,7 @@
                       <input type="checkbox"
                              name="is_active_{{ row.module }}"
                              data-col="active"
+                             data-was-active="{% if row.is_active %}1{% endif %}"
                              aria-label="{% trans 'Active' %}: {{ row.name }}"
                              {% if row.is_active %}checked{% endif %}>
                     {% endif %}
@@ -134,7 +140,9 @@
             </thead>
             <tbody>
               {% for row in external_plugin_rows %}
-                <tr data-plugin-row data-plugin-type="external">
+                <tr data-plugin-row data-plugin-type="external"
+                    data-plugin-name="{{ row.name }}"
+                    data-usage-count="{{ row.usage_count }}">
                   <td>
                     <strong>{{ row.name }}</strong>
                     {% if row.version %}
@@ -149,6 +157,7 @@
                     <input type="checkbox"
                            name="is_active_{{ row.module }}"
                            data-col="active"
+                           data-was-active="{% if row.is_active %}1{% endif %}"
                            aria-label="{% trans 'Active' %}: {{ row.name }}"
                            {% if row.is_active %}checked{% endif %}>
                   </td>

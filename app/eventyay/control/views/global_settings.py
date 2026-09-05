@@ -464,7 +464,16 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
 
         return (GlobalPluginConfig.PluginType.EXTERNAL, False, '')
 
-    def _build_row(self, plugin, config: GlobalPluginConfig | None) -> dict:
+    @staticmethod
+    def _count_events_using_plugins(modules: set[str]) -> dict[str, int]:
+        counts: dict[str, int] = {m: 0 for m in modules}
+        for event in Event.objects.exclude(plugins='').exclude(plugins__isnull=True).iterator():
+            active = set(event.plugins.split(','))
+            for m in modules & active:
+                counts[m] += 1
+        return counts
+
+    def _build_row(self, plugin, config: GlobalPluginConfig | None, usage_count: int = 0) -> dict:
         module = plugin.module
 
         # Runtime classification is the source of truth for type/required/configured_via.
@@ -502,6 +511,7 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
             'configured_via': str(
                 self.CONFIGURED_VIA_LABELS.get(configured_via_raw, configured_via_raw)
             ),
+            'usage_count': usage_count,
         }
 
     def get_context_data(self, **kwargs):
@@ -513,10 +523,20 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
         except (ProgrammingError, OperationalError):
             configs = {}
 
+        all_modules = {p.module for p in all_plugins}
+        try:
+            usage_counts = self._count_events_using_plugins(all_modules)
+        except (ProgrammingError, OperationalError):
+            usage_counts = {}
+
         platform_rows = []
         external_rows = []
         for plugin in all_plugins:
-            row = self._build_row(plugin, configs.get(plugin.module))
+            row = self._build_row(
+                plugin,
+                configs.get(plugin.module),
+                usage_count=usage_counts.get(plugin.module, 0),
+            )
             if row['is_platform']:
                 platform_rows.append(row)
             else:
@@ -524,7 +544,8 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
 
         context['platform_plugin_rows'] = platform_rows
         context['external_plugin_rows'] = external_rows
-        context['active_tab'] = self.request.GET.get('tab', 'platform')
+        active_tab = self.request.GET.get('tab', 'platform')
+        context['active_tab'] = active_tab if active_tab in ('platform', 'external') else 'platform'
         return context
 
     def post(self, request, *args, **kwargs):
@@ -597,7 +618,10 @@ class GlobalPluginManagementView(AdministratorPermissionRequiredMixin, TemplateV
             self._ensure_enabled_on_all_events(platform_managed)
 
         messages.success(request, _('Plugin settings have been saved.'))
-        return redirect(reverse('eventyay_admin:admin.global.plugins'))
+        active_tab = request.POST.get('active_tab', 'platform')
+        if active_tab not in ('platform', 'external'):
+            active_tab = 'platform'
+        return redirect(reverse('eventyay_admin:admin.global.plugins') + f'?tab={active_tab}')
 
     @staticmethod
     def _strip_disabled_from_events(disabled_modules: set[str]):
