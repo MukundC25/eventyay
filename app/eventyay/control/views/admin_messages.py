@@ -169,7 +169,8 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
 
         elif recipient_group == AdminRecipientGroup.ATTENDEES:
             pos_qs = OrderPosition.objects.filter(
-                attendee_email__isnull=False
+                attendee_email__isnull=False,
+                order__status__in=['p', 'n'],
             ).exclude(attendee_email='')
             if selected_event_ids:
                 pos_qs = pos_qs.filter(order__event__pk__in=selected_event_ids)
@@ -484,9 +485,16 @@ def _save_filters(mail: AdminEmailQueue, filters: dict) -> AdminEmailQueueFilter
             'last_active_after': filters.get('last_active_after'),
             'last_active_before': filters.get('last_active_before'),
             'event_status': filters.get('event_status', ''),
+            'event_date_from': filters.get('event_date_from'),
+            'event_date_to': filters.get('event_date_to'),
             'event_ids': filters.get('selected_events', []),
             'organiser_ids': filters.get('selected_organisers', []),
             'selected_user_ids': filters.get('selected_users', []),
+            'organiser_status': filters.get('organiser_status', ''),
+            'billing_status': filters.get('billing_status', ''),
+            'ticketing_status': filters.get('ticketing_status', ''),
+            'cfp_status': filters.get('cfp_status', ''),
+            'setup_status': filters.get('setup_status', ''),
             'exclude_admins': filters.get('exclude_admins', False),
             'exclude_inactive': filters.get('exclude_inactive', False),
             'exclude_unconfirmed_email': filters.get('exclude_unconfirmed_email', False),
@@ -540,16 +548,6 @@ PLACEHOLDER_GROUPS = {
         {'key': 'email', 'label': _('Email address'), 'example': 'jane@example.com'},
         {'key': 'account_url', 'label': _('Account URL'), 'example': 'https://eventyay.com/account/'},
     ],
-    'organiser': [
-        {'key': 'organiser_name', 'label': _('Organiser name'), 'example': 'FOSSASIA'},
-        {'key': 'organiser_url', 'label': _('Organiser URL'), 'example': 'https://eventyay.com/organiser/fossasia/'},
-    ],
-    'event': [
-        {'key': 'event_name', 'label': _('Event name'), 'example': 'FOSSASIA Summit 2026'},
-        {'key': 'event_url', 'label': _('Event URL'), 'example': 'https://eventyay.com/event/fossasia-2026/'},
-        {'key': 'event_start_date', 'label': _('Event start date'), 'example': '2026-03-14'},
-        {'key': 'event_end_date', 'label': _('Event end date'), 'example': '2026-03-16'},
-    ],
     'platform': [
         {'key': 'platform_name', 'label': _('Platform name'), 'example': 'Eventyay'},
         {'key': 'platform_url', 'label': _('Platform URL'), 'example': 'https://eventyay.com/'},
@@ -564,12 +562,6 @@ SAMPLE_CONTEXT = {
     'last_name': 'Doe',
     'email': 'jane@example.com',
     'account_url': '#',
-    'organiser_name': 'Example Organiser',
-    'organiser_url': '#',
-    'event_name': 'Example Event',
-    'event_url': '#',
-    'event_start_date': '2026-01-15',
-    'event_end_date': '2026-01-17',
     'platform_name': 'Eventyay',
     'platform_url': '#',
     'support_email': 'support@eventyay.com',
@@ -591,7 +583,8 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
         draft_pk = self.request.GET.get('draft')
         if draft_pk:
             draft = AdminEmailQueue.objects.filter(
-                pk=draft_pk, status=AdminEmailStatus.DRAFT
+                pk=draft_pk,
+                status__in=[AdminEmailStatus.DRAFT, AdminEmailStatus.QUEUED],
             ).first()
             if draft:
                 self._draft = draft
@@ -611,6 +604,13 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
                         'user_role': f.user_role,
                         'language': f.language,
                         'event_status': f.event_status,
+                        'event_date_from': f.event_date_from,
+                        'event_date_to': f.event_date_to,
+                        'organiser_status': f.organiser_status,
+                        'billing_status': f.billing_status,
+                        'ticketing_status': f.ticketing_status,
+                        'cfp_status': f.cfp_status,
+                        'setup_status': f.setup_status,
                         'created_after': f.created_after,
                         'created_before': f.created_before,
                         'last_active_after': f.last_active_after,
@@ -636,6 +636,7 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
         ctx['recipient_count'] = getattr(self, 'recipient_count', 0)
         ctx['placeholders'] = PLACEHOLDER_GROUPS
         draft = ctx['draft']
+        ctx['editing_queued'] = draft is not None and draft.status == AdminEmailStatus.QUEUED
         if draft and draft.recipient_count_snapshot is not None:
             current, _skipped = resolve_admin_recipients(_extract_filter_dict(ctx['form'].initial))
             if len(current) != draft.recipient_count_snapshot:
@@ -668,7 +669,8 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
         draft_pk = self.request.POST.get('draft_id') or self.request.GET.get('draft')
         if draft_pk and not draft:
             draft = AdminEmailQueue.objects.filter(
-                pk=draft_pk, status=AdminEmailStatus.DRAFT
+                pk=draft_pk,
+                status__in=[AdminEmailStatus.DRAFT, AdminEmailStatus.QUEUED],
             ).first()
 
         attachment = cd.get('attachment')
@@ -738,9 +740,36 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
 
         mail.recipient_count_snapshot = count
         with transaction.atomic():
+            if draft and draft.status == AdminEmailStatus.QUEUED:
+                mail = AdminEmailQueue.objects.select_for_update().filter(
+                    pk=draft.pk,
+                    status__in=[AdminEmailStatus.DRAFT, AdminEmailStatus.QUEUED],
+                ).first()
+                if mail is None:
+                    messages.error(self.request, _('This email has already been sent and can no longer be edited.'))
+                    return redirect('eventyay_admin:admin.messages.outbox')
+                mail.recipient_group = cd['recipient_group']
+                mail.subject = cd.get('subject', '')
+                mail.message = _get_message_text(cd)
+                mail.reply_to = cd.get('reply_to', '')
+                mail.bcc = cd.get('bcc', '')
+                attachment = cd.get('attachment')
+                mail.attachment = attachment.id if attachment else None
+                mail.scheduled_at = cd.get('scheduled_at')
+                mail.status = AdminEmailStatus.QUEUED
+                mail.user = self.request.user
+            mail.recipient_count_snapshot = count
             mail.save()
             _save_filters(mail, filters)
             _populate_recipients(mail, resolved)
+
+        if mail.attachment and mail.scheduled_at:
+            from eventyay.base.models.base import CachedFile
+            from django.utils.timezone import now as _now
+            import datetime
+            CachedFile.objects.filter(id=mail.attachment).update(
+                expires=mail.scheduled_at + datetime.timedelta(days=1)
+            )
 
         LogEntry.objects.create(
             content_type=ContentType.objects.get_for_model(AdminEmailQueue),

@@ -36,6 +36,12 @@
     </div>
   {% endif %}
 
+  {% if editing_queued %}
+    <div class="alert alert-warning">
+      {% translate "This email is already queued for sending. Saving will update it before it is sent." %}
+    </div>
+  {% endif %}
+
   {% if confirm_high_count %}
     <div class="alert alert-warning">
       {% blocktranslate with count=high_count %}

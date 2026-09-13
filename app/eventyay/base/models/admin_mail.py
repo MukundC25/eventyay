@@ -141,9 +141,16 @@ class AdminEmailQueue(models.Model):
                 last_active_after=filters.last_active_after,
                 last_active_before=filters.last_active_before,
                 event_status=filters.event_status,
+                event_date_from=filters.event_date_from,
+                event_date_to=filters.event_date_to,
                 event_ids=list(filters.event_ids),
                 organiser_ids=list(filters.organiser_ids),
                 selected_user_ids=list(filters.selected_user_ids),
+                organiser_status=filters.organiser_status,
+                billing_status=filters.billing_status,
+                ticketing_status=filters.ticketing_status,
+                cfp_status=filters.cfp_status,
+                setup_status=filters.setup_status,
                 exclude_admins=filters.exclude_admins,
                 exclude_inactive=filters.exclude_inactive,
                 exclude_unconfirmed_email=filters.exclude_unconfirmed_email,
@@ -367,10 +374,18 @@ class AdminEmailQueueFilter(models.Model):
     last_active_before = models.DateTimeField(null=True, blank=True)
 
     event_status = models.CharField(max_length=20, blank=True, default='')
+    event_date_from = models.DateField(null=True, blank=True)
+    event_date_to = models.DateField(null=True, blank=True)
     event_ids = ArrayField(models.IntegerField(), blank=True, default=list)
     organiser_ids = ArrayField(models.IntegerField(), blank=True, default=list)
 
     selected_user_ids = ArrayField(models.IntegerField(), blank=True, default=list)
+
+    organiser_status = models.CharField(max_length=30, blank=True, default='')
+    billing_status = models.CharField(max_length=30, blank=True, default='')
+    ticketing_status = models.CharField(max_length=30, blank=True, default='')
+    cfp_status = models.CharField(max_length=30, blank=True, default='')
+    setup_status = models.CharField(max_length=30, blank=True, default='')
 
     exclude_admins = models.BooleanField(default=False, verbose_name=_('Exclude platform admins'))
     exclude_inactive = models.BooleanField(default=False, verbose_name=_('Exclude inactive users'))
