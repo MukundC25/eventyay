@@ -6,7 +6,7 @@
 				.unassigned-mobile-header(@click="isUnassignedCollapsed = !isUnassignedCollapsed")
 					span.unassigned-title
 						i.fa.fa-list
-						span {{ $t('Unassigned Sessions') }} ({{ unscheduled.length }})
+						span {{ translations.unassignedTitle }} ({{ unscheduled.length }})
 						span.drop-hint(v-if="draggedSession")  - {{ $t('Drop here to unassign') }}
 					span.unassigned-collapse-icon
 						i.fa(:class="isUnassignedCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'")
@@ -441,6 +441,7 @@ function onTimeDensityChange (): void {
 
 const translations = computed(() => ({
   filterSessions: caps.showRoles ? $t('Filter shifts') : $t('Filter sessions'),
+  unassignedTitle: caps.showRoles ? $t('Unassigned Shifts') : $t('Unassigned Sessions'),
   newBreak: $t('New break'),
 }))
 
@@ -776,24 +777,29 @@ async function editorSave(): Promise<void> {
   if (caps.canEditRoles) {
     talk.roles = editorSession.value.roles?.filter((r) => r.id !== undefined)
   }
-  
-  await saveTalk(talk)
 
-  const sessionInSchedule = schedule.value?.talks.find((s) => s.id === editorSession.value?.id)
-  if (sessionInSchedule && editorSession.value) {
-    sessionInSchedule.end = typeof editorSession.value.end === 'string' ? editorSession.value.end : editorSession.value.end?.toISOString()
-    if (!('submission' in sessionInSchedule)) {
-      sessionInSchedule.title = editorSession.value.title as Record<string, string>
+  try {
+    await saveTalk(talk)
+
+    const sessionInSchedule = schedule.value?.talks.find((s) => s.id === editorSession.value?.id)
+    if (sessionInSchedule && editorSession.value) {
+      sessionInSchedule.end = typeof editorSession.value.end === 'string' ? editorSession.value.end : editorSession.value.end?.toISOString()
+      if (!('submission' in sessionInSchedule)) {
+        sessionInSchedule.title = editorSession.value.title as Record<string, string>
+      }
     }
+
+    if (caps.showRoles) {
+      schedule.value = await fetchSchedule()
+    }
+
+    editorSession.value = null
+    await fetchAdditionalScheduleData()
+  } catch (error) {
+    console.error('Failed to save shift', error)
+  } finally {
+    editorSessionWaiting.value = false
   }
-  
-  if (caps.showRoles) {
-    schedule.value = await fetchSchedule()
-  }
-  
-  editorSessionWaiting.value = false
-  editorSession.value = null
-  await fetchAdditionalScheduleData()
 }
 
 async function editorDelete(): Promise<void> {
@@ -1548,7 +1554,7 @@ onUnmounted(() => {
 		top: 50%
 		left: 50%
 		transform: translate(-50%, -50%)
-		width: min(680px, 95vw)
+		width: unquote("min(680px, 95vw)")
 		max-width: 95vw
 		max-height: calc(100vh - 48px)
 		overflow-y: auto
