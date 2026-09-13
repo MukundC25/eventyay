@@ -66,6 +66,10 @@
 					h3.session-editor-title(v-if="editorSession.code")
 						a(v-if="caps.showSubmissionLinks && organizerSlug && eventSlug", :href="`${api.getOrgaEventBase()}/submissions/${editorSession.code}/`") {{ getLocalizedString(editorSession.title) }}
 						span(v-else) {{ getLocalizedString(editorSession.title) }}
+					.session-editor-error(v-if="editorSessionError")
+						span {{ editorSessionError }}
+						button.session-editor-error-dismiss(type="button", @click="editorSessionError = ''", :aria-label="$t('Dismiss')")
+							i.fa.fa-times(aria-hidden="true")
 					.data
 						.data-row(v-if="editorSession.code && editorSession.speakers && editorSession.speakers.length > 0 && caps.showSpeakers").form-group.row
 							label.data-label.col-form-label.col-md-3 {{ $t('Speakers') }}
@@ -299,6 +303,7 @@ const currentDay = ref<Moment | null>(null)
 const draggedSession = ref<SessionData | null>(null)
 const editorSession = ref<SessionData | null>(null)
 const editorSessionWaiting = ref<boolean>(false)
+const editorSessionError = ref<string>('')
 const assigningSession = ref<SessionData | null>(null)
 const assigningWaiting = ref<boolean>(false)
 const assignModalError = ref<string>('')
@@ -736,6 +741,7 @@ async function createSession(e: CreateSessionEvent): Promise<void> {
 }
 
 function editorStart(session: SessionData | Talk): void {
+  editorSessionError.value = ''
   const newEditorSession = { ...session } as SessionData
   if (caps.canEditRoles) {
     if (!newEditorSession.roles || newEditorSession.roles.length === 0) {
@@ -788,15 +794,19 @@ async function editorSave(): Promise<void> {
         sessionInSchedule.title = editorSession.value.title as Record<string, string>
       }
     }
-
-    if (caps.showRoles) {
-      schedule.value = await fetchSchedule()
-    }
-
     editorSession.value = null
-    await fetchAdditionalScheduleData()
+
+    try {
+      if (caps.showRoles) {
+        schedule.value = await fetchSchedule()
+      }
+      await fetchAdditionalScheduleData()
+    } catch (refreshError) {
+      console.error('Failed to refresh schedule after save', refreshError)
+    }
   } catch (error) {
-    console.error('Failed to save shift', error)
+    console.error('Failed to save', error)
+    editorSessionError.value = $t('Failed to save. Please try again.')
   } finally {
     editorSessionWaiting.value = false
   }
@@ -1639,6 +1649,27 @@ onUnmounted(() => {
 					width: 100px
 		.warning
 			color: #b23e65
+		.session-editor-error
+			display: flex
+			align-items: center
+			justify-content: space-between
+			gap: 8px
+			padding: 10px 14px
+			margin-bottom: 16px
+			background-color: #fdecea
+			border: 1px solid #f5c6cb
+			border-radius: 4px
+			color: #721c24
+			font-size: 14px
+			.session-editor-error-dismiss
+				background: none
+				border: none
+				color: #721c24
+				cursor: pointer
+				padding: 2px 6px
+				font-size: 14px
+				&:hover
+					opacity: 0.7
 		.assign-data
 			.assign-role
 				margin-bottom: 24px
