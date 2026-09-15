@@ -128,10 +128,8 @@ def send_admin_email(self, admin_email_id: int) -> None:
 
             if not result:
                 logger.warning('[AdminMail] AdminEmailQueue ID %s: send returned False.', admin_email_id)
-            elif mail.status == AdminEmailStatus.SENT:
-                logger.info('[AdminMail] AdminEmailQueue ID %s: all emails sent successfully.', admin_email_id)
             else:
-                logger.warning('[AdminMail] AdminEmailQueue ID %s: partially sent.', admin_email_id)
+                logger.info('[AdminMail] AdminEmailQueue ID %s: all emails sent successfully.', admin_email_id)
 
     except MaxRetriesExceededError:
         logger.error('[AdminMail] Max retries exceeded for AdminEmailQueue ID %s', admin_email_id)

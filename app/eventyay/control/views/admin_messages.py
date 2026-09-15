@@ -1,4 +1,5 @@
 import hashlib
+import datetime
 import json
 import logging
 
@@ -10,6 +11,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.template.loader import render_to_string
 from django.utils.timezone import now as tz_now
 from django.utils.translation import gettext_lazy as _
 from django.views import View
@@ -24,6 +26,7 @@ from eventyay.base.models.admin_mail import (
     AdminEmailStatus,
     AdminRecipientGroup,
 )
+from eventyay.base.models.base import CachedFile
 from eventyay.base.models.mail import MailTemplate, MailTemplateRoles
 from eventyay.base.models.orders import Order, OrderPosition
 from eventyay.base.models.organizer import Team
@@ -578,6 +581,15 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
         kwargs['draft_save'] = self.request.POST.get('action') == 'draft'
         return kwargs
 
+    def form_invalid(self, form):
+        if (
+            self.request.POST.get('action') == 'preview'
+            and self.request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        ):
+            errors = form.errors.get_json_data() if hasattr(form.errors, 'get_json_data') else dict(form.errors)
+            return JsonResponse({'success': False, 'error': True, 'errors': errors}, status=400)
+        return super().form_invalid(form)
+
     def get_initial(self):
         initial = super().get_initial()
         draft_pk = self.request.GET.get('draft')
@@ -661,6 +673,13 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
             recipients, _skipped = resolve_admin_recipients(filters)
             self.recipient_count = len(recipients)
             self.output = self._build_preview(cd)
+            if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                html = render_to_string(
+                    'pretixcontrol/admin/messages/_mail_preview.html',
+                    {'output': self.output, 'recipient_count': self.recipient_count},
+                    request=self.request,
+                )
+                return JsonResponse({'success': True, 'html': html})
             return self.render_to_response(self.get_context_data(form=form))
 
         is_draft = action == 'draft'
@@ -764,9 +783,6 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
             _populate_recipients(mail, resolved)
 
         if mail.attachment and mail.scheduled_at:
-            from eventyay.base.models.base import CachedFile
-            from django.utils.timezone import now as _now
-            import datetime
             CachedFile.objects.filter(id=mail.attachment).update(
                 expires=mail.scheduled_at + datetime.timedelta(days=1)
             )
@@ -986,6 +1002,10 @@ class AdminMessageSendView(AdministratorPermissionRequiredMixin, View):
         elif mail.status == AdminEmailStatus.DRAFT:
             messages.warning(request, _('Drafts cannot be sent directly. Move to outbox first.'))
         else:
+            # Clear scheduled_at so the worker doesn't see a future time and re-delay.
+            if mail.scheduled_at:
+                mail.scheduled_at = None
+                mail.save(update_fields=['scheduled_at'])
             send_admin_email.apply_async(args=[mail.pk])
             LogEntry.objects.create(
                 content_type=ContentType.objects.get_for_model(AdminEmailQueue),

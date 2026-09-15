@@ -214,6 +214,8 @@ class AdminEmailQueue(models.Model):
         bcc_list = [b.strip() for b in self.bcc.split(',') if b.strip()] if self.bcc else []
         attachments = self._resolve_attachment()
 
+        is_first_attempt = not self.recipients.filter(sent=True).exists()
+
         any_dispatched = False
         for recipient in valid_recipients:
             context = self._build_context(recipient)
@@ -244,12 +246,12 @@ class AdminEmailQueue(models.Model):
                 recipient.error = None
                 recipient.save(update_fields=['sent', 'error'])
                 any_dispatched = True
-            except Exception:
+            except Exception as exc:
                 logger.exception('Error dispatching admin email to %s', recipient.email)
-                recipient.error = 'Dispatch failed'
+                recipient.error = str(exc)
                 recipient.save(update_fields=['error'])
 
-        if bcc_list and any_dispatched:
+        if bcc_list and any_dispatched and is_first_attempt:
             for bcc_addr in bcc_list:
                 try:
                     mail_send_task.apply_async(
@@ -284,6 +286,9 @@ class AdminEmailQueue(models.Model):
         else:
             self.status = AdminEmailStatus.QUEUED
             self.save(update_fields=['status'])
+            raise RuntimeError(
+                f'AdminEmailQueue {self.pk}: dispatch incomplete — unsent recipients remain. Celery will retry.'
+            )
 
         return True
 
