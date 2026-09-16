@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('base', '0073_loungemeshaccesstoken_loungemeshserver_and_more'),
+        ('base', '0074_bbbserver_disable_ssl_janusserver_disable_ssl_and_more'),
     ]
 
     operations = [
