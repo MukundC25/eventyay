@@ -41,7 +41,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import TalkSession from './Session.vue'
 import ShiftSession from '~/teamshifts-adapter/Session.vue'
-import { resolveMode, computeShiftColumnLayout, buildShiftGridTemplateColumns, computeShiftOverlapSubcolumn } from '~/teamshifts-adapter'
+import { resolveMode, computeShiftColumnLayout, buildShiftGridTemplateColumns, computeShiftOverlapSubcolumn, assignRoomTracks } from '~/teamshifts-adapter'
 import { getLocalizedString } from '~/utils'
 
 const mode = resolveMode()
@@ -368,6 +368,16 @@ const shiftMinColWidth = computed(() => '320px')
 const shiftColumnLayout = computed(() => {
   if (!props.allowOverlap) return new Map()
   return computeShiftColumnLayout(visibleRooms.value as any[], props.sessions as any[])
+})
+
+const shiftTrackMap = computed(() => {
+  if (!props.allowOverlap) return new Map()
+  const merged = new Map<number | string, number>()
+  for (const room of visibleRooms.value) {
+    const tracks = assignRoomTracks(room.id, props.sessions as any[])
+    for (const [id, track] of tracks) merged.set(id, track)
+  }
+  return merged
 })
 
 const gridStyle = computed(() => {
@@ -724,16 +734,32 @@ const getSessionStyle = (session: SessionDatum | Availability): Record<string, s
   if (props.allowOverlap) {
     const { total } = getOverlapGroup(session)
     if (total > 1 && 'id' in session) {
-      const placement = computeShiftOverlapSubcolumn(session as any, props.sessions as any[], shiftColumnLayout.value as any)
-      if (placement) {
-        return {
-          'grid-row': placement.gridRow,
-          'grid-column': placement.gridColumn,
+      const roomLayout = shiftColumnLayout.value.get(session.room.id)
+      if (roomLayout && roomLayout.colSpan > 1) {
+        const track = shiftTrackMap.value.get((session as any).id)
+        if (track != null) {
+          const subCol = roomLayout.colStart + track
+          return {
+            'grid-row': `${getSliceName(session.start)} / ${getSliceName(session.end)}`,
+            'grid-column': `${subCol} / ${subCol + 1}`,
+          }
         }
       }
     }
     const layout = shiftColumnLayout.value.get(session.room.id)
-    const col = layout ? layout.colStart : (roomIndex > -1 ? roomIndex + 2 : 1)
+    if (layout) {
+      if (!('id' in session)) {
+        return {
+          'grid-row': `${getSliceName(session.start)} / ${getSliceName(session.end)}`,
+          'grid-column': `${layout.colStart} / ${layout.colStart + layout.colSpan}`,
+        }
+      }
+      return {
+        'grid-row': `${getSliceName(session.start)} / ${getSliceName(session.end)}`,
+        'grid-column': layout.colStart.toString(),
+      }
+    }
+    const col = roomIndex > -1 ? roomIndex + 2 : 1
     return {
       'grid-row': `${getSliceName(session.start)} / ${getSliceName(session.end)}`,
       'grid-column': col.toString(),

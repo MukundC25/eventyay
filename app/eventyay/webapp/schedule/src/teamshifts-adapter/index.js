@@ -197,13 +197,14 @@ export function computeShiftColumnLayout (rooms, sessions) {
 	return layout
 }
 
-export function buildShiftGridTemplateColumns (rooms, sessions, minColWidth) {
+export function buildShiftGridTemplateColumns (rooms, sessions, minColWidth, timeColWidth) {
 	const w = minColWidth || '320px'
+	const t = timeColWidth || '78px'
 	const roomCols = rooms.map(room => {
 		const span = computeRoomMaxOverlap(room, sessions)
 		return Array(span).fill(`minmax(${w}, 1fr)`).join(' ')
 	}).join(' ')
-	return `78px ${roomCols} auto`
+	return `${t} ${roomCols} auto`
 }
 
 export function computeShiftOverlapPlacement (session, allSessions, columnLayout) {

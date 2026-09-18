@@ -193,7 +193,7 @@ export function computeRoomMaxOverlap(roomId: number | string, sessions: Session
   return max
 }
 
-function assignRoomTracks(roomId: number | string, sessions: Session[]): Map<number | string, number> {
+export function assignRoomTracks(roomId: number | string, sessions: Session[]): Map<number | string, number> {
   const roomSessions = sessions
     .filter(s => s.room?.id === roomId && s.start && s.end)
     .sort((a, b) => {
@@ -238,7 +238,8 @@ export function computeShiftColumnLayout(
 export function buildShiftGridTemplateColumns(
   rooms: { id: number | string }[],
   sessions: Session[],
-  minColWidth = '320px'
+  minColWidth = '320px',
+  timeColWidth = '78px'
 ): string {
   const roomCols = rooms
     .map(room => {
@@ -246,7 +247,7 @@ export function buildShiftGridTemplateColumns(
       return Array(span).fill(`minmax(${minColWidth}, 1fr)`).join(' ')
     })
     .join(' ')
-  return `78px ${roomCols} auto`
+  return `${timeColWidth} ${roomCols} auto`
 }
 
 export function computeShiftOverlapSubcolumn(

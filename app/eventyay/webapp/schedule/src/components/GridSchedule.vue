@@ -176,7 +176,7 @@ export default {
 		roomsBarStyle () {
 			if (this.isShiftMode) {
 				return {
-					'grid-template-columns': buildShiftGridTemplateColumns(this.rooms, this.sessions, this.shiftMinColWidth),
+					'grid-template-columns': buildShiftGridTemplateColumns(this.rooms, this.sessions, this.shiftMinColWidth, this.shiftTimeColWidth),
 					'min-width': this.scrollContentWidth ? (this.scrollContentWidth + 'px') : null,
 				}
 			}
@@ -187,6 +187,11 @@ export default {
 		},
 		shiftMinColWidth () {
 			return '420px'
+		},
+		shiftTimeColWidth () {
+			if (this.density === 'compact') return '60px'
+			if (this.density === 'comfortable') return '96px'
+			return '78px'
 		},
 		shiftColumnLayout () {
 			if (!this.isShiftMode) return new Map()
@@ -360,7 +365,7 @@ export default {
 			}).join(' ')
 			if (this.isShiftMode) {
 				return {
-					'grid-template-columns': buildShiftGridTemplateColumns(this.rooms, this.sessions, this.shiftMinColWidth),
+					'grid-template-columns': buildShiftGridTemplateColumns(this.rooms, this.sessions, this.shiftMinColWidth, this.shiftTimeColWidth),
 					'grid-template-rows': rows,
 				}
 			}
