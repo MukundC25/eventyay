@@ -5,40 +5,41 @@
 
 {% block custom_header %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'pretixcontrol/css/tickets-mobile.css' %}">
-  <link rel="stylesheet" href="{% static 'pretixcontrol/css/orders-mobile.css' %}">
-  <link rel="stylesheet" href="{% static 'pretixcontrol/css/admin-messages.css' %}">
+  <link rel='stylesheet' href='{% static "pretixcontrol/css/tickets-mobile.css" %}'>
+  <link rel='stylesheet' href='{% static "pretixcontrol/css/orders-mobile.css" %}'>
+  <link rel='stylesheet' href='{% static "pretixcontrol/css/admin-messages.css" %}'>
 {% endblock %}
 
 {% block content %}
   <h1>{% translate "Email templates" %}</h1>
-  <p class="text-muted">{% translate "Read-only list of platform email templates. Editing is not available yet." %}</p>
+  <p class='text-muted'>{% translate "Read-only list of platform email templates. Templates shown in blue are Talk/CfP templates with editable content. System templates (in black) are defined in code and their content depends on event configuration." %}</p>
 
-  <div class="table-responsive">
-    <table class="table mt-4 table-flip tickets-table">
+  <div class='table-responsive'>
+    <table class='table mt-4 table-flip tickets-table'>
       <thead>
         <tr>
           <th>{% translate "Template" %}</th>
           <th>{% translate "Category" %}</th>
           <th>{% translate "Trigger" %}</th>
           <th>{% translate "Recipient" %}</th>
-          <th>{% translate "Actions" %}</th>
         </tr>
       </thead>
       <tbody>
         {% for tpl in templates %}
           <tr>
-            <td class="list-name-cell"><strong>{{ tpl.name }}</strong></td>
-            <td class="list-meta">{{ tpl.category }}</td>
-            <td class="list-meta">{{ tpl.trigger }}</td>
-            <td class="list-meta">{{ tpl.recipient_type }}</td>
-            <td class="list-actions">
+            <td class='list-name-cell'>
               {% if tpl.role %}
-                <a href="{% url 'eventyay_admin:admin.messages.template_detail' role=tpl.role %}" class="btn btn-sm btn-default" title="{% translate 'View' %}">
-                  <i class="fa fa-eye"></i>
-                </a>
+                <strong>
+                  <a href='{% url "eventyay_admin:admin.messages.template_detail" role=tpl.role %}'>{{ tpl.name }}</a>
+                </strong>
+              {% else %}
+                <strong>{{ tpl.name }}</strong>
+                <br><small class='text-muted'>{% translate "System template — defined in code" %}</small>
               {% endif %}
             </td>
+            <td class='list-meta'>{{ tpl.category }}</td>
+            <td class='list-meta'>{{ tpl.trigger }}</td>
+            <td class='list-meta'>{{ tpl.recipient_type }}</td>
           </tr>
         {% endfor %}
       </tbody>

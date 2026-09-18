@@ -101,4 +101,6 @@ urlpatterns = [
     path('messages/<int:pk>/cancel/', admin_messages.AdminMessageCancelView.as_view(), name='admin.messages.cancel'),
     path('messages/<int:pk>/delete/', admin_messages.AdminMessageDeleteView.as_view(), name='admin.messages.delete'),
     path('messages/<int:pk>/duplicate/', admin_messages.AdminMessageDuplicateView.as_view(), name='admin.messages.duplicate'),
+    path('messages/<int:pk>/detail/', admin_messages.AdminMessageSentDetailView.as_view(), name='admin.messages.sent_detail'),
+    path('messages/<int:pk>/recipients/', admin_messages.AdminMessageSentRecipientsView.as_view(), name='admin.messages.sent_recipients'),
 ]

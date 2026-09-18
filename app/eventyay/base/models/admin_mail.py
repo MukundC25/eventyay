@@ -157,32 +157,24 @@ class AdminEmailQueue(models.Model):
             )
         return new_mail
 
-    def _resolve_attachment(self) -> list[dict] | None:
+    def _resolve_attachment(self) -> dict | None:
         if not self.attachment:
             return None
         try:
             cf = CachedFile.objects.get(id=self.attachment)
-            try:
-                content = cf.file.read()
-                cf.file.seek(0)
-            except (ValueError, FileNotFoundError, OSError):
-                logger.warning(
-                    'CachedFile %s content unavailable for AdminEmailQueue %s',
-                    self.attachment, self.pk,
-                )
-                return None
-            return [{
+            return {
+                'cached_file_id': str(cf.id),
                 'name': cf.filename or 'attachment',
-                'content': content,
                 'content_type': cf.type or 'application/octet-stream',
-            }]
+            }
         except CachedFile.DoesNotExist:
             logger.warning('CachedFile %s not found for AdminEmailQueue %s', self.attachment, self.pk)
             return None
 
     def send(self) -> bool:
         """
-        Send the queued email to all recipients. Returns True if called.
+        Dispatch the queued email to all unsent recipients.
+        Returns True if processing ran; False if skipped entirely.
         Called by the Celery task.
         """
         if self.status in (AdminEmailStatus.SENT, AdminEmailStatus.DRAFT):
@@ -192,14 +184,14 @@ class AdminEmailQueue(models.Model):
             return False
 
         # Only consider recipients with a valid email address.
-        valid_recipients = (
+        valid_recipients = list(
             self.recipients
             .select_related('user')
             .filter(sent=False)
             .exclude(email__isnull=True)
             .exclude(email='')
         )
-        if not valid_recipients.exists():
+        if not valid_recipients:
             self.status = AdminEmailStatus.SENT
             self.sent_at = now()
             self.save(update_fields=['status', 'sent_at'])
@@ -212,11 +204,13 @@ class AdminEmailQueue(models.Model):
 
         reply_to_addr = self.reply_to or getattr(django_settings, 'DEFAULT_FROM_EMAIL', '')
         bcc_list = [b.strip() for b in self.bcc.split(',') if b.strip()] if self.bcc else []
-        attachments = self._resolve_attachment()
-
+        attachment_meta = self._resolve_attachment()
+        attachments_arg = [attachment_meta] if attachment_meta else None
         is_first_attempt = not self.recipients.filter(sent=True).exists()
 
-        any_dispatched = False
+        sent_ids: list[int] = []
+        failed_recipients: list[AdminEmailQueueRecipient] = []
+
         for recipient in valid_recipients:
             context = self._build_context(recipient)
             subject = self.subject
@@ -237,48 +231,61 @@ class AdminEmailQueue(models.Model):
                         'event': None,
                         'cc': [],
                         'bcc': [],
-                        'attachments': attachments,
+                        'attachments': attachments_arg,
                     },
                     ignore_result=True,
                 )
-                # Mark dispatched, not delivered — best-effort tracking.
-                recipient.sent = True
-                recipient.error = None
-                recipient.save(update_fields=['sent', 'error'])
-                any_dispatched = True
+                sent_ids.append(recipient.pk)
             except Exception as exc:
                 logger.exception('Error dispatching admin email to %s', recipient.email)
                 recipient.error = str(exc)
-                recipient.save(update_fields=['error'])
+                failed_recipients.append(recipient)
 
-        if bcc_list and any_dispatched and is_first_attempt:
+        if sent_ids:
+            AdminEmailQueueRecipient.objects.filter(pk__in=sent_ids).update(sent=True, error=None)
+        if failed_recipients:
+            AdminEmailQueueRecipient.objects.bulk_update(failed_recipients, ['error'])
+
+        if bcc_list and sent_ids and is_first_attempt:
+            platform_context = {
+                'platform_name': str(getattr(django_settings, 'PLATFORM_NAME', 'Eventyay')),
+                'platform_url': str(getattr(django_settings, 'SITE_URL', '')),
+                'support_email': str(getattr(django_settings, 'SUPPORT_EMAIL', '')),
+                'support_url': str(getattr(django_settings, 'SUPPORT_URL', '')),
+            }
+            bcc_subject = self.subject
+            bcc_body = self.message
+            for key, value in platform_context.items():
+                bcc_subject = bcc_subject.replace('{' + key + '}', str(value))
+                bcc_body = bcc_body.replace('{' + key + '}', str(value))
+
             for bcc_addr in bcc_list:
                 try:
                     mail_send_task.apply_async(
                         kwargs={
                             'to': [bcc_addr],
-                            'subject': self.subject,
-                            'body': self.message,
-                            'html': AdminEmailQueue.make_html(self.message),
-                            'reply_to': [],
+                            'subject': bcc_subject,
+                            'body': bcc_body,
+                            'html': AdminEmailQueue.make_html(bcc_body),
+                            'reply_to': [reply_to_addr] if reply_to_addr else [],
                             'event': None,
                             'cc': [],
                             'bcc': [],
-                            'attachments': attachments,
+                            'attachments': attachments_arg,
                         },
                         ignore_result=True,
                     )
                 except Exception:
                     logger.exception('Error dispatching BCC copy to %s for AdminEmailQueue %s', bcc_addr, self.pk)
 
-        unsent_valid = (
+        has_unsent = (
             self.recipients
             .filter(sent=False)
             .exclude(email__isnull=True)
             .exclude(email='')
             .exists()
         )
-        if not unsent_valid:
+        if not has_unsent:
             self.status = AdminEmailStatus.SENT
             self.sent_at = now()
             self.scheduled_at = None

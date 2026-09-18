@@ -1,6 +1,7 @@
 from django import forms
 from django.conf import settings
 from django.core.validators import validate_email
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from eventyay.base.forms.widgets import SplitDateTimePickerWidget
@@ -9,9 +10,10 @@ from eventyay.base.models.admin_mail import AdminRecipientGroup
 from eventyay.common.forms.fields import I18nEmailBodyFormField
 from eventyay.common.forms.mixins import ScheduledAtValidationMixin
 from eventyay.common.forms.renderers import TabularFormRenderer
-from eventyay.common.forms.widgets import EnhancedSelect, EnhancedSelectMultiple
+from eventyay.common.forms.widgets import EnhancedSelect
 from eventyay.consts import SizeKey
 from eventyay.control.forms import CachedFileField, SplitDateTimeField
+from eventyay.control.forms.widgets import Select2Multiple
 
 
 ACCOUNT_STATUS_CHOICES = [
@@ -126,9 +128,10 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         queryset=Organizer.objects.none(),
         label=_('Selected organisers'),
         required=False,
-        widget=EnhancedSelectMultiple(attrs={
-            'title': _('Select organisers'),
-            'placeholder': _('Select organisers'),
+        widget=Select2Multiple(attrs={
+            'data-model-select2': 'generic',
+            'data-select2-url': '',  # set in __init__
+            'data-placeholder': _('Search organisers…'),
         }),
     )
 
@@ -136,9 +139,10 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         queryset=Event.objects.none(),
         label=_('Selected events'),
         required=False,
-        widget=EnhancedSelectMultiple(attrs={
-            'title': _('Select events'),
-            'placeholder': _('Select events'),
+        widget=Select2Multiple(attrs={
+            'data-model-select2': 'generic',
+            'data-select2-url': '',  # set in __init__
+            'data-placeholder': _('Search events…'),
         }),
     )
 
@@ -146,9 +150,10 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         queryset=User.objects.none(),
         label=_('Selected users'),
         required=False,
-        widget=EnhancedSelectMultiple(attrs={
-            'title': _('Select users'),
-            'placeholder': _('Select users'),
+        widget=Select2Multiple(attrs={
+            'data-model-select2': 'generic',
+            'data-select2-url': '',  # set in __init__
+            'data-placeholder': _('Search by name or email…'),
         }),
     )
 
@@ -343,13 +348,38 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         lang_choices.extend(settings.LANGUAGES)
         self.fields['language'].choices = lang_choices
 
-        self.fields['selected_organisers'].queryset = Organizer.objects.all().order_by('name')
-        self.fields['selected_events'].queryset = Event.objects.all().order_by('name')
+        self.fields['selected_users'].widget.attrs['data-select2-url'] = reverse('eventyay_admin:admin.users.select2')
+        self.fields['selected_events'].widget.attrs['data-select2-url'] = reverse('control:events.typeahead')
+        self.fields['selected_organisers'].widget.attrs['data-select2-url'] = reverse('control:organizers.select2')
+
+        initial = kwargs.get('initial', {})
+        data = args[0] if args else {}
+
+        def _ids_from(source, key):
+            val = source.get(key) if hasattr(source, 'get') else None
+            if val is None:
+                return []
+            if hasattr(val, 'values_list'):
+                return list(val.values_list('pk', flat=True))
+            if hasattr(val, '__iter__') and not isinstance(val, str):
+                try:
+                    return [int(v) if not hasattr(v, 'pk') else v.pk for v in val]
+                except (TypeError, ValueError):
+                    pass
+            return []
+
+        organiser_ids = _ids_from(data, 'selected_organisers') or _ids_from(initial, 'selected_organisers')
+        event_ids = _ids_from(data, 'selected_events') or _ids_from(initial, 'selected_events')
+        user_ids = _ids_from(data, 'selected_users') or _ids_from(initial, 'selected_users')
+
+        self.fields['selected_organisers'].queryset = (
+            Organizer.objects.filter(pk__in=organiser_ids) if organiser_ids else Organizer.objects.none()
+        )
+        self.fields['selected_events'].queryset = (
+            Event.objects.filter(pk__in=event_ids) if event_ids else Event.objects.none()
+        )
         self.fields['selected_users'].queryset = (
-            User.objects.filter(is_active=True)
-            .exclude(email__isnull=True)
-            .exclude(email='')
-            .order_by('email')
+            User.objects.filter(pk__in=user_ids) if user_ids else User.objects.none()
         )
 
         if draft_save:
@@ -363,13 +393,17 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
 
         send_immediately = cleaned.get('send_immediately', False)
         scheduled_at = cleaned.get('scheduled_at')
+        delivery_mode = cleaned.get('delivery_mode', 'now')
 
         if send_immediately and scheduled_at:
             raise forms.ValidationError(
                 _('You cannot select "Send immediately" and also specify a scheduled time.')
             )
 
-        if cleaned.get('delivery_mode') == 'now' and scheduled_at:
+        if delivery_mode == 'later' and not scheduled_at:
+            self.add_error('scheduled_at', _('Please specify a date and time when delivery mode is "Schedule for later".'))
+
+        if delivery_mode == 'now' and scheduled_at:
             cleaned['scheduled_at'] = None
 
         return cleaned

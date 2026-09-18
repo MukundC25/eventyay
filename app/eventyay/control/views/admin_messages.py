@@ -2,6 +2,7 @@ import hashlib
 import datetime
 import json
 import logging
+import re
 
 from allauth.account.models import EmailAddress
 from django.conf import settings as django_settings
@@ -30,7 +31,9 @@ from eventyay.base.models.base import CachedFile
 from eventyay.base.models.mail import MailTemplate, MailTemplateRoles
 from eventyay.base.models.orders import Order, OrderPosition
 from eventyay.base.models.organizer import Team
-from eventyay.base.models.submission import Submission
+from eventyay.base.models.submission import Submission, SubmissionStates
+from eventyay.base.models.cfp import CfP
+from eventyay.base.models.organizer import OrganizerBillingModel
 from eventyay.common.mail import mail_send_task
 from eventyay.common.sanitizers import sanitize_email_html
 from eventyay.control.forms.admin.admin_messages import (
@@ -292,7 +295,6 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
         AdminRecipientGroup.EVENT_ORGANISERS,
         AdminRecipientGroup.EVENT_TEAM_MEMBERS,
     ):
-        from eventyay.base.models.organizer import OrganizerBillingModel
         with scopes_disabled():
             if billing_status == 'configured':
                 billed_org_ids = OrganizerBillingModel.objects.filter(
@@ -340,8 +342,6 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
         AdminRecipientGroup.SPEAKERS,
         AdminRecipientGroup.REVIEWERS,
     ):
-        from eventyay.base.models.cfp import CfP
-        from eventyay.base.models.submission import Submission, SubmissionStates
         with scopes_disabled():
             if cfp_status == 'cfp_open':
                 cfp_event_ids = CfP.objects.filter(
@@ -385,9 +385,8 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
                     pk__in=events_with_payment
                 ).values_list('pk', flat=True)
             elif setup_status == 'missing_schedule':
-                from eventyay.base.models.submission import Submission
                 events_with_schedule = Submission.objects.filter(
-                    slot__isnull=False
+                    slots__isnull=False
                 ).values_list('event_id', flat=True).distinct()
                 setup_event_ids = Event.objects.exclude(
                     pk__in=events_with_schedule
@@ -405,7 +404,7 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
     reason = str(dict(AdminRecipientGroup.choices).get(recipient_group, recipient_group))
     skipped = 0
 
-    for user in qs.only('pk', 'email', 'fullname', 'is_active', 'is_staff', 'is_administrator'):
+    for user in qs.only('pk', 'email', 'fullname', 'wikimedia_username', 'is_active', 'is_staff', 'is_administrator'):
         raw_email = user.email or ''
         if not raw_email.strip():
             skipped += 1
@@ -987,9 +986,25 @@ class AdminMessageTemplateDetailView(AdministratorPermissionRequiredMixin, Templ
 
         with scopes_disabled():
             template = MailTemplate.objects.filter(role=role).first()
+
+        all_templates = AdminMessageTemplatesView(kwargs={})._get_platform_templates()
+        meta = next((t for t in all_templates if t.get('role') == role), {})
+
         ctx['mail_template'] = template
         ctx['role'] = role
-        ctx['role_label'] = dict(MailTemplateRoles.choices).get(role, role)
+        ctx['role_label'] = dict(MailTemplateRoles.choices).get(role, role) or meta.get('name', role)
+        ctx['category'] = meta.get('category', _('System'))
+        ctx['trigger'] = meta.get('trigger', '—')
+        ctx['recipient_type'] = meta.get('recipient_type', _('User'))
+        ctx['last_updated'] = template.updated if template and hasattr(template, 'updated') else (
+            template.updated_at if template and hasattr(template, 'updated_at') else None
+        )
+        placeholder_keys: list[str] = []
+        if template:
+            body = str(template.text or '')
+            subject = str(template.subject or '')
+            placeholder_keys = sorted(set(re.findall(r'\{(\w+)\}', body + subject)))
+        ctx['placeholder_keys'] = placeholder_keys
         return ctx
 
 
@@ -1127,4 +1142,42 @@ class AdminMessageRecipientsView(AdministratorPermissionRequiredMixin, View):
             'count': len(recipients),
             'skipped': skipped,
             'recipients': preview,
+        })
+
+
+class AdminMessageSentDetailView(AdministratorPermissionRequiredMixin, TemplateView):
+    template_name = 'pretixcontrol/admin/messages/sent_detail.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        mail = get_object_or_404(AdminEmailQueue, pk=self.kwargs['pk'], status=AdminEmailStatus.SENT)
+        ctx['mail'] = mail
+        ctx['html_body'] = AdminEmailQueue.make_html(mail.message)
+        return ctx
+
+
+class AdminMessageSentRecipientsView(AdministratorPermissionRequiredMixin, View):
+    def get(self, request, pk):
+        mail = get_object_or_404(AdminEmailQueue, pk=pk, status=AdminEmailStatus.SENT)
+        try:
+            page = max(1, int(request.GET.get('page', '1')))
+        except ValueError:
+            page = 1
+        pagesize = 50
+        qs = mail.recipients.select_related('user').order_by('email')
+        total = qs.count()
+        offset = (page - 1) * pagesize
+        rows = [
+            {
+                'email': r.email,
+                'name': r.name or '',
+                'sent': r.sent,
+                'error': r.error or '',
+            }
+            for r in qs[offset: offset + pagesize]
+        ]
+        return JsonResponse({
+            'count': total,
+            'recipients': rows,
+            'has_more': total > (offset + pagesize),
         })
