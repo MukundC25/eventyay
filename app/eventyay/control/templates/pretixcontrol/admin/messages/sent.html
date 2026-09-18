@@ -43,22 +43,28 @@
             <td class='list-meta'>{{ mail.sent_at|date:"SHORT_DATETIME_FORMAT" }}</td>
             <td class='list-actions'>
               <div class='btn-toolbar' role='toolbar'>
+                <div class='btn-group' role='group'>
                   <a href='{% url "eventyay_admin:admin.messages.sent_detail" pk=mail.pk %}'
                      class='btn btn-sm btn-default'
                      title='{% translate "View email" %}'>
                     <i class='fa fa-eye'></i>
                   </a>
+                </div>
+                <div class='btn-group' role='group'>
                   <a href='{% url "eventyay_admin:admin.messages.sent_detail" pk=mail.pk %}#recipients'
                      class='btn btn-sm btn-default'
                      title='{% translate "View recipient list" %}'>
                     <i class='fa fa-users'></i>
                   </a>
-                  <form method='post' action='{% url "eventyay_admin:admin.messages.duplicate" pk=mail.pk %}' style='display:inline'>
+                </div>
+                <div class='btn-group' role='group'>
+                  <form method='post' action='{% url "eventyay_admin:admin.messages.duplicate" pk=mail.pk %}'>
                     {% csrf_token %}
                     <button type='submit' class='btn btn-sm btn-default' title='{% translate "Duplicate as draft" %}'>
                       <i class='fa fa-copy'></i>
                     </button>
                   </form>
+                </div>
               </div>
             </td>
           </tr>

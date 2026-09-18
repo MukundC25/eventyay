@@ -1120,7 +1120,10 @@ class AdminMessagePreviewView(StaffMemberRequiredMixin, View):
 
 class AdminMessageRecipientsView(AdministratorPermissionRequiredMixin, View):
     def get(self, request):
-        form = AdminComposeRecipientsForm(data=request.GET)
+        data = request.GET.copy()
+        if not data.get('recipient_group'):
+            data['recipient_group'] = AdminRecipientGroup.ALL_USERS
+        form = AdminComposeRecipientsForm(data=data)
         if not form.is_valid():
             return JsonResponse({'count': 0, 'recipients': [], 'errors': form.errors}, status=400)
 

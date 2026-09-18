@@ -90,7 +90,6 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         initial=AdminRecipientGroup.ALL_ORGANISERS,
         widget=EnhancedSelect(attrs={
             'title': _('Recipient group'),
-            'placeholder': _('Select recipient group'),
         }),
     )
 

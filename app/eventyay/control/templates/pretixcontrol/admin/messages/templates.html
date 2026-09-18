@@ -12,7 +12,7 @@
 
 {% block content %}
   <h1>{% translate "Email templates" %}</h1>
-  <p class='text-muted'>{% translate "Read-only list of platform email templates. Templates shown in blue are Talk/CfP templates with editable content. System templates (in black) are defined in code and their content depends on event configuration." %}</p>
+  <p class='text-muted'>{% translate "Read-only list of platform email templates." %}</p>
 
   <div class='table-responsive'>
     <table class='table mt-4 table-flip tickets-table'>
@@ -34,7 +34,6 @@
                 </strong>
               {% else %}
                 <strong>{{ tpl.name }}</strong>
-                <br><small class='text-muted'>{% translate "System template — defined in code" %}</small>
               {% endif %}
             </td>
             <td class='list-meta'>{{ tpl.category }}</td>
