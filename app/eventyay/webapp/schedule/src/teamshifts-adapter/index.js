@@ -138,22 +138,52 @@ export function withdrawUrl (eventUrl, session) {
 }
 
 export function computeRoomMaxOverlap (room, allSessions) {
+	const events = []
+	for (const s of allSessions) {
+		if (s.room !== room || !s.start || !s.end) continue
+		events.push({ time: s.start, delta: 1 })
+		events.push({ time: s.end, delta: -1 })
+	}
+	events.sort((a, b) => {
+		const diff = a.time.diff(b.time)
+		return diff !== 0 ? diff : a.delta - b.delta
+	})
+	let active = 0
+	let max = 1
+	for (const e of events) {
+		active += e.delta
+		if (active > max) max = active
+	}
+	return max
+}
+
+function assignRoomTracks (room, allSessions) {
 	const roomSessions = allSessions
 		.filter(s => s.room === room && s.start && s.end)
 		.sort((a, b) => {
 			const diff = a.start.diff(b.start)
-			return diff !== 0 ? diff : a.id - b.id
+			if (diff !== 0) return diff
+			return String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0
 		})
-	if (roomSessions.length <= 1) return 1
-	let maxOverlap = 1
-	for (let i = 0; i < roomSessions.length; i++) {
-		let count = 1
-		for (let j = i + 1; j < roomSessions.length; j++) {
-			if (roomSessions[j].start.isBefore(roomSessions[i].end)) count++
+	const trackEnds = []
+	const trackMap = new Map()
+	for (const s of roomSessions) {
+		let assigned = -1
+		for (let t = 0; t < trackEnds.length; t++) {
+			if (!s.start.isBefore(trackEnds[t])) {
+				assigned = t
+				break
+			}
 		}
-		if (count > maxOverlap) maxOverlap = count
+		if (assigned === -1) {
+			assigned = trackEnds.length
+			trackEnds.push(s.end)
+		} else {
+			trackEnds[assigned] = s.end
+		}
+		trackMap.set(s.id, assigned)
 	}
-	return maxOverlap
+	return trackMap
 }
 
 export function computeShiftColumnLayout (rooms, sessions) {
@@ -182,21 +212,11 @@ export function computeShiftOverlapPlacement (session, allSessions, columnLayout
 	const roomLayout = columnLayout ? columnLayout.get(session.room) : null
 	if (!roomLayout || roomLayout.colSpan <= 1) return null
 
-	const overlapping = allSessions
-		.filter(s => {
-			if (!s.room || !s.start || !s.end) return false
-			if (s.room !== session.room) return false
-			return s.start.isBefore(session.end) && s.end.isAfter(session.start)
-		})
-		.sort((a, b) => {
-			const diff = a.start.diff(b.start)
-			return diff !== 0 ? diff : a.id - b.id
-		})
+	const trackMap = assignRoomTracks(session.room, allSessions)
+	const track = trackMap.get(session.id)
+	if (track == null) return null
 
-	if (overlapping.length <= 1) return null
-
-	const myIndex = overlapping.findIndex(s => s.id === session.id)
-	const subCol = roomLayout.colStart + myIndex
+	const subCol = roomLayout.colStart + track
 	return {
 		gridRow: `${getSliceName(session.start)} / ${getSliceName(session.end)}`,
 		gridColumn: `${subCol} / ${subCol + 1}`,
