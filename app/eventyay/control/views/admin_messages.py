@@ -31,6 +31,8 @@ from eventyay.base.models.base import CachedFile
 from eventyay.base.models.mail import MailTemplate, MailTemplateRoles
 from eventyay.base.models.orders import Order, OrderPosition
 from eventyay.base.models.organizer import Team
+from eventyay.base.models.product import Product
+from eventyay.base.models.event import Event_SettingsStore
 from eventyay.base.models.submission import Submission, SubmissionStates
 from eventyay.base.models.cfp import CfP
 from eventyay.base.models.organizer import OrganizerBillingModel
@@ -315,7 +317,6 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
         AdminRecipientGroup.EVENT_TEAM_MEMBERS,
     ):
         with scopes_disabled():
-            from eventyay.base.models.product import Product
             if ticketing_status == 'shop_enabled':
                 shop_event_ids = Event.objects.filter(live=True).values_list('pk', flat=True)
             elif ticketing_status == 'shop_disabled':
@@ -370,14 +371,12 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
         AdminRecipientGroup.EVENT_TEAM_MEMBERS,
     ):
         with scopes_disabled():
-            from eventyay.base.models.product import Product, Question
             if setup_status == 'missing_ticket':
                 events_with_tickets = Product.objects.values_list('event_id', flat=True).distinct()
                 setup_event_ids = Event.objects.exclude(
                     pk__in=events_with_tickets
                 ).values_list('pk', flat=True)
             elif setup_status == 'missing_payment':
-                from eventyay.base.models.event import Event_SettingsStore
                 events_with_payment = Event_SettingsStore.objects.filter(
                     key__in=['payment_stripe__publishable_key', 'payment_paypal__client_id']
                 ).values_list('object_id', flat=True).distinct()
