@@ -5,9 +5,11 @@ from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
 from channels.layers import get_channel_layer
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db.transaction import atomic
 from django.dispatch import receiver
 from django.utils.timezone import now
+from django.utils.translation import gettext_lazy as _
 from django_scopes import scope, scopes_disabled
 
 from eventyay.base.models import AuditLog, Channel, User
@@ -20,12 +22,12 @@ from eventyay.base.models.room import (
     partial_validated_update,
     validate_room_can_be_deleted,
 )
-from eventyay.base.services.stale_cache import invalidate_next_stream_cache
 from eventyay.base.services.stale_cache import (
     NONE_SENTINEL,
     cache_delete,
     deserialize_none_sentinel,
     get_stale_cached,
+    invalidate_next_stream_cache,
 )
 from eventyay.base.services.user import get_public_users
 from eventyay.base.signals import periodic_task
@@ -147,7 +149,7 @@ def start_view(room: Room, user: User, delete=False):
     else:
         previous.update(end=now())
     r = RoomView.objects.create(room=room, user=user)
-    c = RoomView.objects.filter(room=room, end__isnull=True).values("user_id").distinct().count()
+    c = RoomView.objects.filter(room=room, end__isnull=True).values('user_id').distinct().count()
     return r, c
 
 
@@ -159,7 +161,7 @@ def end_view(view: RoomView, delete=False):
     else:
         view.end = now()
         view.save()
-    c = RoomView.objects.filter(room_id=view.room_id, end__isnull=True).values("user_id").distinct().count()
+    c = RoomView.objects.filter(room_id=view.room_id, end__isnull=True).values('user_id').distinct().count()
     is_last = RoomView.objects.filter(room_id=view.room_id, end__isnull=True, user=view.user).count() == 0
     return c, is_last
 
@@ -188,21 +190,21 @@ def validate_room_config_patch(room, body):
         data=body,
         partial=True,
     )
-    if "module_config" in body:
-        _sanitize_jitsi_config(body["module_config"])
-        _sanitize_server_backed_interaction_modules(body["module_config"])
+    if 'module_config' in body:
+        _sanitize_jitsi_config(body['module_config'])
+        _sanitize_server_backed_interaction_modules(body['module_config'])
     return partial_validated_update(serializer, body)
 
 
 EMBEDDED_SUITE_MODULE_TYPES = {
-    "call.bigbluebutton",
-    "call.jitsi",
-    "call.zoom",
+    'call.bigbluebutton',
+    'call.jitsi',
+    'call.zoom',
 }
 PLATFORM_NATIVE_INTERACTION_TYPES = {
-    "chat.native",
-    "question",
-    "poll",
+    'chat.native',
+    'question',
+    'poll',
 }
 
 
@@ -215,14 +217,11 @@ def _sanitize_server_backed_interaction_modules(module_config):
     if not isinstance(module_config, list):
         return
     has_embedded_suite = any(
-        isinstance(m, dict) and m.get("type") in EMBEDDED_SUITE_MODULE_TYPES
-        for m in module_config
+        isinstance(m, dict) and m.get('type') in EMBEDDED_SUITE_MODULE_TYPES for m in module_config
     )
     if has_embedded_suite:
         module_config[:] = [
-            m
-            for m in module_config
-            if isinstance(m, dict) and m.get("type") not in PLATFORM_NATIVE_INTERACTION_TYPES
+            m for m in module_config if isinstance(m, dict) and m.get('type') not in PLATFORM_NATIVE_INTERACTION_TYPES
         ]
 
 
@@ -232,13 +231,13 @@ def _sanitize_jitsi_config(module_config):
     for module in module_config:
         if not isinstance(module, dict):
             continue
-        if module.get("type") != "call.jitsi":
+        if module.get('type') != 'call.jitsi':
             continue
-        config = module.setdefault("config", {})
+        config = module.setdefault('config', {})
         if not isinstance(config, dict):
             config = {}
-            module["config"] = config
-        for key in ("domain", "jwt_enabled", "app_id", "key_id", "app_secret"):
+            module['config'] = config
+        for key in ('domain', 'jwt_enabled', 'app_id', 'key_id', 'app_secret'):
             config.pop(key, None)
 
 
@@ -302,6 +301,16 @@ def soft_delete_room(event, room, by_user=None):
         # submission after validation and before deleted=True is committed.
         room = Room.objects.select_for_update().get(pk=room.pk)
         validate_room_can_be_deleted(room)
+
+        shift_location = getattr(room, 'shift_location', None)
+        if shift_location is not None and shift_location.shifts.exists():
+            raise ValidationError(
+                _(
+                    'This room is used by shifts in the TeamShifts schedule. '
+                    'Reassign or delete those shifts before deleting this room.'
+                )
+            )
+
         room.deleted = True
         room.save(update_fields=['deleted'])
         event.wip_schedule.talks.filter(room=room, submission__isnull=True).delete()
@@ -335,9 +344,7 @@ def reorder_rooms(event, id_list, by_user):
         except ValueError:
             return sys.maxsize, r.sorting_priority, r.name
 
-    all_rooms = list(
-        event.rooms.filter(deleted=False).only('id', 'name', 'sorting_priority', 'position')
-    )
+    all_rooms = list(event.rooms.filter(deleted=False).only('id', 'name', 'sorting_priority', 'position'))
     all_rooms.sort(key=key)
     to_update = []
 
@@ -369,8 +376,8 @@ def normalize_after_priority_change(event, room_id, new_priority):
     other_rooms = list(
         event.rooms.filter(deleted=False)
         .exclude(id=room_id)
-        .only("id", "sorting_priority", "position")
-        .order_by("sorting_priority", "id")
+        .only('id', 'sorting_priority', 'position')
+        .order_by('sorting_priority', 'id')
     )
     insert_pos = max(0, min(new_priority - 1, len(other_rooms)))
     actual_priority = insert_pos + 1
@@ -392,7 +399,7 @@ def normalize_after_priority_change(event, room_id, new_priority):
                 to_update.append(r)
 
     if to_update:
-        Room.objects.bulk_update(to_update, fields=["sorting_priority", "position"])
+        Room.objects.bulk_update(to_update, fields=['sorting_priority', 'position'])
 
     Room.objects.filter(id=room_id).update(
         sorting_priority=actual_priority,

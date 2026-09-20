@@ -36,8 +36,8 @@
 						.new-break-hint(v-if="newBreakTooltip", id="new-break-hint", role="tooltip") {{ newBreakTooltip }}
 					session(v-for="un in unscheduled", :key="un.id", :session="un", @startDragging="startDragging", :isDragged="draggedSession && un.id === draggedSession.id", @editSession="editorStart($event)", @deleteSession="deleteSessionDirect($event)", @assignMembers="openAssignModal($event)")
 					.deleted-room-sessions(v-if="deletedRoomSessions.length")
-						h3 {{ caps.showRoles ? $t('Deleted Room Shifts') : $t('Deleted Room Sessions') }}
-						p {{ caps.showRoles ? $t('These shifts were assigned to a room that has been deleted. Drag them into another room to restore them to the schedule.') : $t('These sessions were assigned to a room that has been deleted. Drag them into another room to restore them to the schedule.') }}
+						h3 {{ caps.showRoles ? $t('Shifts from Unavailable Rooms') : $t('Deleted Room Sessions') }}
+						p {{ caps.showRoles ? $t('These shifts were in a room that has been deleted or unscheduled. Drag them into another room to restore them to the schedule.') : $t('These sessions were assigned to a room that has been deleted. Drag them into another room to restore them to the schedule.') }}
 						session(v-for="session in deletedRoomSessions", :key="session.id", :session="session", @startDragging="startDragging", :isDragged="draggedSession && session.id === draggedSession.id")
 			#schedule-wrapper(v-scrollbar.x.y="")
 				.schedule-controls
@@ -565,7 +565,9 @@ const deletedRoomSessions = computed<SessionData[]>(() => {
       (session) =>
         session.code &&
         session.start &&
-        (!session.room || !roomsLookup.value[lookupKey(session.room)]),
+        (isShifts
+          ? (session.room && !roomsLookup.value[lookupKey(session.room)])
+          : (!session.room || !roomsLookup.value[lookupKey(session.room)])),
     )
     .map((session) => ({
       id: session.id,
