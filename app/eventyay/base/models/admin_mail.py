@@ -200,6 +200,7 @@ class AdminEmailQueue(models.Model):
         self.status = AdminEmailStatus.SENDING
         self.save(update_fields=['status'])
 
+        # Imported here to avoid circular import: common.mail → base.models.event → base.models
         from eventyay.common.mail import mail_send_task
 
         reply_to_addr = self.reply_to or getattr(django_settings, 'DEFAULT_FROM_EMAIL', '')

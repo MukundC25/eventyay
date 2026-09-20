@@ -435,6 +435,30 @@ def resolve_admin_recipients(filters: dict) -> tuple[list[dict], int]:
                 'reason': reason,
             })
 
+    if selected_user_ids and recipient_group != AdminRecipientGroup.SELECTED_USERS:
+        with scopes_disabled():
+            extra_users = (
+                User.objects
+                .filter(pk__in=selected_user_ids)
+                .exclude(email__isnull=True)
+                .exclude(email='')
+                .exclude(deleted=True)
+                .only('pk', 'email', 'fullname', 'wikimedia_username', 'is_active', 'is_staff', 'is_administrator')
+            )
+            for user in extra_users:
+                email_lower = (user.email or '').strip().lower()
+                if email_lower and email_lower not in seen:
+                    seen.add(email_lower)
+                    role = 'Admin' if (user.is_administrator or user.is_staff) else 'User'
+                    result.append({
+                        'user_id': user.pk,
+                        'email': user.email,
+                        'name': user.get_full_name() or user.email,
+                        'status': 'Active' if user.is_active else 'Inactive',
+                        'role': role,
+                        'reason': _('Individually selected'),
+                    })
+
     return result, skipped
 
 
@@ -1121,7 +1145,7 @@ class AdminMessageRecipientsView(AdministratorPermissionRequiredMixin, View):
     def get(self, request):
         data = request.GET.copy()
         if not data.get('recipient_group'):
-            data['recipient_group'] = AdminRecipientGroup.ALL_USERS
+            return JsonResponse({'count': 0, 'recipients': [], 'skipped': 0})
         form = AdminComposeRecipientsForm(data=data)
         if not form.is_valid():
             return JsonResponse({'count': 0, 'recipients': [], 'errors': form.errors}, status=400)

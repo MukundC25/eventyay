@@ -111,16 +111,13 @@ def send_admin_email(self, admin_email_id: int) -> None:
             )
             return
 
-        current_time = now()
-        if mail.scheduled_at and mail.scheduled_at > current_time:
-            countdown = max(1, int((mail.scheduled_at - current_time).total_seconds()))
+        if mail.scheduled_at and mail.scheduled_at > now():
             logger.info(
-                '[AdminMail] AdminEmailQueue ID %s: scheduled for %s, rescheduling in %s seconds.',
+                '[AdminMail] AdminEmailQueue ID %s: scheduled for %s, re-queuing with eta.',
                 admin_email_id,
                 mail.scheduled_at,
-                countdown,
             )
-            self.retry(countdown=countdown, args=[admin_email_id], throw=False)
+            send_admin_email.apply_async(args=[admin_email_id], eta=mail.scheduled_at)
             return
 
     try:
@@ -131,19 +128,13 @@ def send_admin_email(self, admin_email_id: int) -> None:
         else:
             logger.info('[AdminMail] AdminEmailQueue ID %s: all emails sent successfully.', admin_email_id)
 
-    except MaxRetriesExceededError:
-        logger.error('[AdminMail] Max retries exceeded for AdminEmailQueue ID %s', admin_email_id)
-        AdminEmailQueue.objects.filter(pk=admin_email_id).update(
-            status=AdminEmailStatus.SENT,
-            sent_at=now(),
-        )
     except Exception as exc:
         logger.exception('[AdminMail] Unexpected error for AdminEmailQueue ID %s', admin_email_id)
         try:
             self.retry(exc=exc, args=[admin_email_id])
         except MaxRetriesExceededError:
-            logger.error('[AdminMail] Max retries exceeded for AdminEmailQueue ID %s', admin_email_id)
-            AdminEmailQueue.objects.filter(pk=admin_email_id).update(
-                status=AdminEmailStatus.SENT,
-                sent_at=now(),
+            logger.error(
+                '[AdminMail] Max retries exceeded for AdminEmailQueue ID %s. '
+                'Email remains in current status for admin review.',
+                admin_email_id,
             )

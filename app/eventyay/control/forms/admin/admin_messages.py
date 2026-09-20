@@ -86,8 +86,7 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
     default_renderer = TabularFormRenderer
     recipient_group = forms.ChoiceField(
         label=_('Recipient group'),
-        choices=AdminRecipientGroup.choices,
-        initial=AdminRecipientGroup.ALL_ORGANISERS,
+        choices=[('', _('Select recipient group'))] + list(AdminRecipientGroup.choices),
         widget=EnhancedSelect(attrs={
             'title': _('Recipient group'),
         }),
@@ -352,9 +351,18 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         self.fields['selected_organisers'].widget.attrs['data-select2-url'] = reverse('control:organizers.select2')
 
         initial = kwargs.get('initial', {})
-        data = args[0] if args else {}
+        data = args[0] if args else kwargs.get('data')
 
         def _ids_from(source, key):
+            if source is None:
+                return []
+            if hasattr(source, 'getlist'):
+                vals = source.getlist(key)
+                if vals:
+                    try:
+                        return [int(v) for v in vals if str(v).strip().isdigit()]
+                    except (TypeError, ValueError):
+                        pass
             val = source.get(key) if hasattr(source, 'get') else None
             if val is None:
                 return []
@@ -457,7 +465,14 @@ class AdminComposeRecipientsForm(forms.Form):
         self.fields['language'].choices = lang_choices
 
     def _clean_id_list(self, field_name: str) -> str:
-        value = self.cleaned_data.get(field_name, '')
+        if hasattr(self.data, 'getlist'):
+            vals = self.data.getlist(field_name)
+            if vals:
+                value = ','.join(vals)
+            else:
+                value = ''
+        else:
+            value = self.cleaned_data.get(field_name, '')
         if not value:
             return value
         for part in str(value).split(','):
