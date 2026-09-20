@@ -137,10 +137,15 @@ export function withdrawUrl (eventUrl, session) {
 	return `${base}teamshifts/shifts/${getShiftId(session)}/withdraw/`
 }
 
+function roomId (room) {
+	return room?.id ?? room
+}
+
 export function computeRoomMaxOverlap (room, allSessions) {
+	const rid = roomId(room)
 	const events = []
 	for (const s of allSessions) {
-		if (s.room !== room || !s.start || !s.end) continue
+		if (roomId(s.room) !== rid || !s.start || !s.end) continue
 		events.push({ time: s.start, delta: 1 })
 		events.push({ time: s.end, delta: -1 })
 	}
@@ -158,8 +163,9 @@ export function computeRoomMaxOverlap (room, allSessions) {
 }
 
 function assignRoomTracks (room, allSessions) {
+	const rid = roomId(room)
 	const roomSessions = allSessions
-		.filter(s => s.room === room && s.start && s.end)
+		.filter(s => roomId(s.room) === rid && s.start && s.end)
 		.sort((a, b) => {
 			const diff = a.start.diff(b.start)
 			if (diff !== 0) return diff
@@ -190,8 +196,9 @@ export function computeShiftColumnLayout (rooms, sessions) {
 	const layout = new Map()
 	let col = 2
 	for (const room of rooms) {
+		const rid = roomId(room)
 		const span = computeRoomMaxOverlap(room, sessions)
-		layout.set(room, { colStart: col, colSpan: span })
+		layout.set(rid, { colStart: col, colSpan: span })
 		col += span
 	}
 	return layout
@@ -210,7 +217,8 @@ export function buildShiftGridTemplateColumns (rooms, sessions, minColWidth, tim
 export function computeShiftOverlapPlacement (session, allSessions, columnLayout) {
 	if (!session.start || !session.end || !session.room) return null
 
-	const roomLayout = columnLayout ? columnLayout.get(session.room) : null
+	const rid = roomId(session.room)
+	const roomLayout = columnLayout ? columnLayout.get(rid) : null
 	if (!roomLayout || roomLayout.colSpan <= 1) return null
 
 	const trackMap = assignRoomTracks(session.room, allSessions)

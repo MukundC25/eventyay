@@ -449,7 +449,7 @@ export default {
 			return !!session.id
 		},
 		getRoomHeaderStyle (room) {
-			const layout = this.shiftColumnLayout.get(room)
+			const layout = this.shiftColumnLayout.get(room?.id ?? room)
 			if (!layout) return {}
 			return {
 				'grid-column': `${layout.colStart} / ${layout.colStart + layout.colSpan}`,
@@ -501,7 +501,7 @@ export default {
 						'grid-column': placement.gridColumn,
 					}
 				}
-				const layout = this.shiftColumnLayout.get(session.room)
+				const layout = this.shiftColumnLayout.get(session.room?.id ?? session.room)
 				const col = layout ? layout.colStart : (roomIndex > -1 ? roomIndex + 2 : null)
 				return {
 					'grid-row': `${getSliceName(session.start)} / ${getSliceName(session.end)}`,
