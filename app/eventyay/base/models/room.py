@@ -1,7 +1,7 @@
 import uuid
 from functools import cached_property
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models, transaction
 from django.db.models import Exists, JSONField, OuterRef, Q
 from django.db.models.expressions import RawSQL, Value
@@ -43,6 +43,10 @@ def default_grants():
 
 UNSCHEDULED_LINKED_SUBMISSIONS_MESSAGE = _(
     'A room with linked submissions cannot be marked as unscheduled.'
+)
+UNSCHEDULED_LINKED_SHIFTS_MESSAGE = _(
+    'This room is linked to a TeamShifts location with assigned shifts. '
+    'Reassign or delete those shifts before marking this room as unscheduled.'
 )
 UNSCHEDULED_ROOM_SCHEDULING_MESSAGE = _(
     'Unscheduled rooms cannot be linked to talk sessions.'
@@ -141,6 +145,13 @@ def validate_is_unscheduled_change(room) -> None:
     """Raise ValidationError if the room cannot be marked as unscheduled."""
     if room.pk and room_has_linked_submissions(room):
         raise ValidationError({'is_unscheduled': UNSCHEDULED_LINKED_SUBMISSIONS_MESSAGE})
+    if room.pk:
+        try:
+            shift_location = room.shift_location
+        except ObjectDoesNotExist:
+            shift_location = None
+        if shift_location is not None and shift_location.shifts.exists():
+            raise ValidationError({'is_unscheduled': UNSCHEDULED_LINKED_SHIFTS_MESSAGE})
 
 
 def validate_talk_slot_room(room) -> None:

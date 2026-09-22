@@ -5,7 +5,7 @@ from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
 from channels.layers import get_channel_layer
 from django.core.cache import cache
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.transaction import atomic
 from django.dispatch import receiver
 from django.utils.timezone import now
@@ -302,7 +302,10 @@ def soft_delete_room(event, room, by_user=None):
         room = Room.objects.select_for_update().get(pk=room.pk)
         validate_room_can_be_deleted(room)
 
-        shift_location = getattr(room, 'shift_location', None)
+        try:
+            shift_location = room.shift_location
+        except ObjectDoesNotExist:
+            shift_location = None
         if shift_location is not None and shift_location.shifts.exists():
             raise ValidationError(
                 _(

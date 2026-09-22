@@ -5,6 +5,20 @@
 {% block extra_title %}{{ generic_title }} :: {% endblock extra_title %}
 
 {% block content %}
+  {% if has_linked_shifts %}
+    <p class="alert alert-warning" role="alert">
+      {% blocktranslate count counter=linked_shift_count %}
+        This room is linked to a TeamShifts location that has {{ counter }} shift assigned.
+        Deleting this room will mark the linked location as unavailable in TeamShifts.
+        Please reassign or delete those shifts first.
+      {% plural %}
+        This room is linked to a TeamShifts location that has {{ counter }} shifts assigned.
+        Deleting this room will mark the linked location as unavailable in TeamShifts.
+        Please reassign or delete those shifts first.
+      {% endblocktranslate %}
+    </p>
+  {% endif %}
+
   {% if has_linked_sessions %}
     <h2>{% translate "Confirm deletion" %}</h2>
     <hr>

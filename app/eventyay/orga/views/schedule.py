@@ -8,7 +8,7 @@ import dateutil.parser
 from celery.exceptions import TaskError
 from django.conf import settings
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect
@@ -18,6 +18,7 @@ from django.utils.translation import ngettext
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import FormView, TemplateView, UpdateView, View
 from django_context_decorator import context
+from django_scopes import scopes_disabled
 from i18nfield.strings import LazyI18nString
 from i18nfield.utils import I18nJSONEncoder
 
@@ -538,6 +539,24 @@ class RoomView(OrderActionMixin, OrgaCRUDView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+
+        if self.action == 'list':
+            try:
+                from teamshifts.models import ShiftLocation
+                room_list = ctx.get('room_list', [])
+                room_ids = [r.pk for r in room_list]
+                with scopes_disabled():
+                    rooms_with_shifts = set(
+                        ShiftLocation.objects.filter(
+                            linked_room_id__in=room_ids,
+                            shifts__isnull=False,
+                        ).values_list('linked_room_id', flat=True).distinct()
+                    )
+                for room in room_list:
+                    room.has_linked_shifts = room.pk in rooms_with_shifts
+            except ImportError:
+                pass
+
         if self.action == 'delete' and self.object:
             linked_slots = linked_submission_talks_for_room(self.object)
             ctx['has_linked_sessions'] = bool(linked_slots)
@@ -569,6 +588,19 @@ class RoomView(OrderActionMixin, OrgaCRUDView):
             ctx['schedule_room_url'] = schedule_editor_room_url(
                 self.request.event, self.object
             )
+
+            try:
+                shift_location = self.object.shift_location
+            except ObjectDoesNotExist:
+                shift_location = None
+            if shift_location is not None:
+                linked_shift_count = shift_location.shifts.count()
+                ctx['has_linked_shifts'] = linked_shift_count > 0
+                ctx['linked_shift_count'] = linked_shift_count
+            else:
+                ctx['has_linked_shifts'] = False
+                ctx['linked_shift_count'] = 0
+
         return ctx
 
     def order_handler(self, request, *args, **kwargs):
