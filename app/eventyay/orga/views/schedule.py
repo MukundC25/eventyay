@@ -18,7 +18,7 @@ from django.utils.translation import ngettext
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import FormView, TemplateView, UpdateView, View
 from django_context_decorator import context
-from django_scopes import scopes_disabled
+from django_scopes import scope
 from i18nfield.strings import LazyI18nString
 from i18nfield.utils import I18nJSONEncoder
 
@@ -547,7 +547,7 @@ class RoomView(OrderActionMixin, OrgaCRUDView):
                 from teamshifts.models import ShiftLocation
                 room_list = ctx.get('room_list', [])
                 room_ids = [r.pk for r in room_list]
-                with scopes_disabled():
+                with scope(event=self.request.event):
                     rooms_with_shifts = set(
                         ShiftLocation.objects.filter(
                             linked_room_id__in=room_ids,

@@ -146,12 +146,13 @@ def validate_is_unscheduled_change(room) -> None:
     if room.pk and room_has_linked_submissions(room):
         raise ValidationError({'is_unscheduled': UNSCHEDULED_LINKED_SUBMISSIONS_MESSAGE})
     if room.pk:
-        try:
-            shift_location = room.shift_location
-        except ObjectDoesNotExist:
-            shift_location = None
-        if shift_location is not None and shift_location.shifts.exists():
-            raise ValidationError({'is_unscheduled': UNSCHEDULED_LINKED_SHIFTS_MESSAGE})
+        with scope(event=room.event):
+            try:
+                shift_location = room.shift_location
+            except ObjectDoesNotExist:
+                shift_location = None
+            if shift_location is not None and shift_location.shifts.exists():
+                raise ValidationError({'is_unscheduled': UNSCHEDULED_LINKED_SHIFTS_MESSAGE})
 
 
 def validate_talk_slot_room(room) -> None:
