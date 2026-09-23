@@ -1025,6 +1025,13 @@ async function stopDragging(): Promise<void> {
           await saveTalk(movedSession)
           await fetchAdditionalScheduleData()
         }
+      } else if (draggedSession.value.deletedRoom) {
+        const movedSession = schedule.value?.talks.find((s) => s.id === draggedSession.value!.id)
+        if (movedSession) {
+          movedSession.room = undefined
+          await saveTalk(movedSession)
+          await fetchAdditionalScheduleData()
+        }
       } else if (schedule.value?.talks.find((s) => s.id === draggedSession.value!.id)) {
         schedule.value.talks = schedule.value.talks.filter((s) => s.id !== draggedSession.value!.id)
         await api.deleteTalk({ id: Number(draggedSession.value.id) })

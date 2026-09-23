@@ -6,6 +6,7 @@ import logging
 from asgiref.sync import async_to_sync
 import dateutil.parser
 from celery.exceptions import TaskError
+from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -543,21 +544,20 @@ class RoomView(OrderActionMixin, OrgaCRUDView):
         ctx = super().get_context_data(**kwargs)
 
         if self.action == 'list':
-            try:
+            if apps.is_installed('teamshifts'):
                 from teamshifts.models import ShiftLocation
-                room_list = ctx.get('room_list', [])
-                room_ids = [r.pk for r in room_list]
-                with scope(event=self.request.event):
-                    rooms_with_shifts = set(
-                        ShiftLocation.objects.filter(
-                            linked_room_id__in=room_ids,
-                            shifts__isnull=False,
-                        ).values_list('linked_room_id', flat=True).distinct()
-                    )
-                for room in room_list:
-                    room.has_linked_shifts = room.pk in rooms_with_shifts
-            except ImportError:
-                pass
+                if hasattr(ShiftLocation, 'linked_room'):
+                    room_list = ctx.get('room_list', [])
+                    room_ids = [r.pk for r in room_list]
+                    with scope(event=self.request.event):
+                        rooms_with_shifts = set(
+                            ShiftLocation.objects.filter(
+                                linked_room_id__in=room_ids,
+                                shifts__isnull=False,
+                            ).values_list('linked_room_id', flat=True).distinct()
+                        )
+                    for room in room_list:
+                        room.has_linked_shifts = room.pk in rooms_with_shifts
 
         if self.action == 'delete' and self.object:
             linked_slots = linked_submission_talks_for_room(self.object)
@@ -591,14 +591,18 @@ class RoomView(OrderActionMixin, OrgaCRUDView):
                 self.request.event, self.object
             )
 
-            try:
-                shift_location = self.object.shift_location
-            except ObjectDoesNotExist:
-                shift_location = None
-            if shift_location is not None:
-                linked_shift_count = shift_location.shifts.count()
-                ctx['has_linked_shifts'] = linked_shift_count > 0
-                ctx['linked_shift_count'] = linked_shift_count
+            if apps.is_installed('teamshifts') and hasattr(self.object, 'shift_location'):
+                try:
+                    shift_location = self.object.shift_location
+                except ObjectDoesNotExist:
+                    shift_location = None
+                if shift_location is not None:
+                    linked_shift_count = shift_location.shifts.count()
+                    ctx['has_linked_shifts'] = linked_shift_count > 0
+                    ctx['linked_shift_count'] = linked_shift_count
+                else:
+                    ctx['has_linked_shifts'] = False
+                    ctx['linked_shift_count'] = 0
             else:
                 ctx['has_linked_shifts'] = False
                 ctx['linked_shift_count'] = 0
