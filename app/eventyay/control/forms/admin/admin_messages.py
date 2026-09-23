@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core.validators import validate_email
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from i18nfield.forms import I18nFormField, I18nTextInput
 
 from eventyay.base.forms.widgets import SplitDateTimePickerWidget
 from eventyay.base.models import Event, Organizer, User
@@ -280,22 +281,9 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         widget=forms.TextInput(attrs={'placeholder': 'bcc1@domain.com, bcc2@domain.com'}),
     )
 
-    subject = forms.CharField(
-        label=_('Subject'),
-        max_length=500,
-        widget=forms.TextInput(attrs={'placeholder': _('Email subject')}),
-    )
-
-    message = I18nEmailBodyFormField(
-        label=_('Message'),
-        placeholders=[
-            'user_name', 'first_name', 'last_name', 'email', 'account_url',
-            'organiser_name', 'organiser_url',
-            'event_name', 'event_url', 'event_start_date', 'event_end_date',
-            'platform_name', 'platform_url', 'support_email', 'support_url',
-        ],
-        locales=['en'],
-    )
+    # subject and message are created in __init__ with platform locales
+    subject = None
+    message = None
     attachment = CachedFileField(
         label=_('Attachment'),
         required=False,
@@ -345,6 +333,23 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         lang_choices = [('', _('All'))]
         lang_choices.extend(settings.LANGUAGES)
         self.fields['language'].choices = lang_choices
+
+        platform_locales = [code for code, _name in settings.LANGUAGES]
+        self.fields['subject'] = I18nFormField(
+            label=_('Subject'),
+            widget=I18nTextInput,
+            required=not draft_save,
+            locales=platform_locales,
+        )
+        self.fields['message'] = I18nEmailBodyFormField(
+            label=_('Message'),
+            placeholders=[
+                'user_name', 'first_name', 'last_name', 'email', 'account_url',
+                'platform_name', 'platform_url', 'support_email', 'support_url',
+            ],
+            required=not draft_save,
+            locales=platform_locales,
+        )
 
         self.fields['selected_users'].widget.attrs['data-select2-url'] = reverse('eventyay_admin:admin.users.select2')
         self.fields['selected_events'].widget.attrs['data-select2-url'] = reverse('control:events.typeahead')
