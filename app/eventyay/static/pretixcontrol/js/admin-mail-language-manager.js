@@ -1,5 +1,5 @@
 const LANGUAGE_INPUT_SELECTOR = 'input[lang], textarea[lang]'
-const DEFAULT_LOCALE = 'en'
+let DEFAULT_LOCALE = 'en'
 
 const getAllLocales = () => {
   const locales = []
@@ -65,6 +65,9 @@ const buildTab = (locale, container, tabs, activeLocales, rebuildFn) => {
       e.stopPropagation()
       document.querySelectorAll(LANGUAGE_INPUT_SELECTOR).forEach((input) => {
         if (input.lang === locale.code) {
+          if (input.__eventyayTiptapEditor) {
+            input.__eventyayTiptapEditor.commands.setContent('', { emitUpdate: false })
+          }
           input.value = ''
           toggleLocaleField(input, true)
         }
@@ -97,6 +100,11 @@ const init = () => {
 
   const allLocales = getAllLocales()
   if (allLocales.length < 2) return
+
+  const configuredDefault = container.dataset.defaultLocale
+  DEFAULT_LOCALE = allLocales.some((l) => l.code === configuredDefault)
+    ? configuredDefault
+    : allLocales[0].code
 
   const tabs = []
   const activeLocales = new Set([DEFAULT_LOCALE])

@@ -330,6 +330,14 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         self.draft_save = draft_save
         super().__init__(*args, **kwargs)
 
+        for field_name in ('subject', 'message'):
+            value = self.initial.get(field_name)
+            if value is not None:
+                if hasattr(value, 'data'):
+                    value = value.data
+                if isinstance(value, str) and value:
+                    self.initial[field_name] = {settings.LANGUAGE_CODE: value}
+
         lang_choices = [('', _('All'))]
         lang_choices.extend(settings.LANGUAGES)
         self.fields['language'].choices = lang_choices
@@ -338,6 +346,7 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         self.fields['subject'] = I18nFormField(
             label=_('Subject'),
             widget=I18nTextInput,
+            max_length=500,
             required=not draft_save,
             locales=platform_locales,
         )
@@ -402,6 +411,17 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
         cleaned = super().clean()
         if cleaned is None:
             return cleaned
+
+        if not self.draft_save:
+            default_locale = settings.LANGUAGE_CODE
+            for field_name in ('subject', 'message'):
+                value = cleaned.get(field_name)
+                if value and hasattr(value, 'data') and isinstance(value.data, dict):
+                    if not value.data.get(default_locale):
+                        self.add_error(
+                            field_name,
+                            _('A %(locale)s translation is required.') % {'locale': default_locale},
+                        )
 
         send_immediately = cleaned.get('send_immediately', False)
         scheduled_at = cleaned.get('scheduled_at')

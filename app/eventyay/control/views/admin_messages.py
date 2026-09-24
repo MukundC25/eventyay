@@ -658,6 +658,7 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
         ctx['recipient_count'] = getattr(self, 'recipient_count', 0)
         ctx['placeholders'] = PLACEHOLDER_GROUPS
         ctx['platform_locales'] = [code for code, _name in django_settings.LANGUAGES]
+        ctx['platform_default_locale'] = django_settings.LANGUAGE_CODE
         draft = ctx['draft']
         ctx['editing_queued'] = draft is not None and draft.status == AdminEmailStatus.QUEUED
         if draft and draft.recipient_count_snapshot is not None:
@@ -1181,7 +1182,7 @@ class AdminMessageSentDetailView(AdministratorPermissionRequiredMixin, TemplateV
         ctx = super().get_context_data(**kwargs)
         mail = get_object_or_404(AdminEmailQueue, pk=self.kwargs['pk'], status=AdminEmailStatus.SENT)
         ctx['mail'] = mail
-        ctx['html_body'] = AdminEmailQueue.make_html(mail.message)
+        ctx['html_body'] = AdminEmailQueue.make_html(str(mail.message))
         return ctx
 
 
