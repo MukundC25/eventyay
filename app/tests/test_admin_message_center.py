@@ -1,7 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import now
 
+from eventyay.base.i18n import LazyI18nString
 from eventyay.base.models import User
 from eventyay.base.models.admin_mail import (
     AdminEmailQueue,
@@ -465,7 +468,6 @@ def test_i18n_subject_stored_as_dict(admin_user):
         status=AdminEmailStatus.DRAFT,
     )
     mail.refresh_from_db()
-    from eventyay.base.i18n import LazyI18nString
     assert isinstance(mail.subject, LazyI18nString)
     assert str(mail.subject.localize('en')) == 'Hello'
     assert str(mail.subject.localize('de')) == 'Hallo'
@@ -480,7 +482,6 @@ def test_i18n_message_localize_fallback(admin_user):
         status=AdminEmailStatus.DRAFT,
     )
     mail.refresh_from_db()
-    from eventyay.base.i18n import LazyI18nString
     msg = LazyI18nString(mail.message)
     assert 'English only' in str(msg.localize('fr'))
 
@@ -494,14 +495,12 @@ def test_i18n_plain_string_compat(admin_user):
         status=AdminEmailStatus.QUEUED,
     )
     mail.refresh_from_db()
-    from eventyay.base.i18n import LazyI18nString
     assert 'Plain subject' in str(LazyI18nString(mail.subject).localize('en'))
     assert 'Plain body' in str(LazyI18nString(mail.message).localize('de'))
 
 
 @pytest.mark.django_db
 def test_send_resolves_user_locale(admin_user):
-    from unittest.mock import patch
     user_de = User.objects.create_user(email='de_user@example.com', password='x', locale='de')
     user_en = User.objects.create_user(email='en_user@example.com', password='x', locale='en')
     mail = AdminEmailQueue.objects.create(
@@ -537,6 +536,5 @@ def test_duplicate_preserves_i18n(admin_user):
     AdminEmailQueueFilter.objects.create(mail=mail)
     new_mail = mail.duplicate()
     new_mail.refresh_from_db()
-    from eventyay.base.i18n import LazyI18nString
     assert str(LazyI18nString(new_mail.subject).localize('de')) == 'Hallo'
     assert str(LazyI18nString(new_mail.message).localize('de')) == 'Body DE'

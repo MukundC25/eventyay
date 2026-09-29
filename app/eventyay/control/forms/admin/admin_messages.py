@@ -354,6 +354,8 @@ class AdminComposeForm(ScheduledAtValidationMixin, forms.Form):
             label=_('Message'),
             placeholders=[
                 'user_name', 'first_name', 'last_name', 'email', 'account_url',
+                'organiser_name', 'organiser_url',
+                'event_name', 'event_url', 'event_start_date', 'event_end_date',
                 'platform_name', 'platform_url', 'support_email', 'support_url',
             ],
             required=not draft_save,

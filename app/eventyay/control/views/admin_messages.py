@@ -1182,7 +1182,8 @@ class AdminMessageSentDetailView(AdministratorPermissionRequiredMixin, TemplateV
         ctx = super().get_context_data(**kwargs)
         mail = get_object_or_404(AdminEmailQueue, pk=self.kwargs['pk'], status=AdminEmailStatus.SENT)
         ctx['mail'] = mail
-        ctx['html_body'] = AdminEmailQueue.make_html(str(mail.message))
+        default_locale = django_settings.LANGUAGE_CODE
+        ctx['html_body'] = AdminEmailQueue.make_html(LazyI18nString(mail.message).localize(default_locale))
         return ctx
 
 
