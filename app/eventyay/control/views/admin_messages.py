@@ -875,15 +875,23 @@ class AdminMessageComposeView(AdministratorPermissionRequiredMixin, FormView):
 
         return self.render_to_response(self.get_context_data(form=form))
 
+    @staticmethod
+    def _filled_locales(value) -> set[str]:
+        data = value.data if isinstance(value, LazyI18nString) else value
+        if isinstance(data, dict):
+            return {locale for locale, text in data.items() if text}
+        return {django_settings.LANGUAGE_CODE} if data else set()
+
     def _build_preview(self, cd: dict) -> dict:
         subject_i18n = LazyI18nString(cd.get('subject', ''))
         message_i18n = LazyI18nString(cd.get('message', ''))
+        active_locales = self._filled_locales(cd.get('subject')) | self._filled_locales(cd.get('message'))
         output: dict[str, dict] = {}
         for locale, _name in django_settings.LANGUAGES:
+            if locale not in active_locales:
+                continue
             subject = subject_i18n.localize(locale)
             body = message_i18n.localize(locale)
-            if not subject and not body:
-                continue
             for key, value in SAMPLE_CONTEXT.items():
                 subject = subject.replace('{' + key + '}', value)
                 body = body.replace('{' + key + '}', value)
