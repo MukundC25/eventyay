@@ -53,7 +53,10 @@ div.c-linear-schedule-session.is-shift-session(
 									@click.stop="toggleAssigneesPopover(role, $event)") +{{ hiddenAssigneeCount(role) }} {{ $t('more') }}
 						span.text-muted(v-if="!assignedList(role).length") {{ $t('None') }}
 				.shift-actions
-					template(v-if="isMyRole(role)")
+					template(v-if="canManageShifts")
+						button.btn.btn-sm.btn-danger(v-if="isMyRole(role)", type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
+						button.btn.btn-sm.btn-primary(type="button", :disabled="assignBusy", @click.stop="openAssignDialog(role)") {{ $t('Sign Up') }}
+					template(v-else-if="isMyRole(role)")
 						button.btn.btn-sm.btn-danger(type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
 					template(v-else-if="canClaimRole(role)")
 						button.btn.btn-sm.btn-primary(type="button", :disabled="claimBusy", @click.stop="openConfirm('claim', role)") {{ $t('Sign Up') }}
@@ -61,9 +64,6 @@ div.c-linear-schedule-session.is-shift-session(
 						span.text-muted {{ $t('Restricted') }}
 					template(v-else-if="isRoleFull(role)")
 						span.text-muted {{ $t('Full') }}
-					button.organizer-action-btn.role-assign-btn(v-if="canManageShifts", type="button", @pointerdown.stop, @click.stop="openAssignDialog", :title="$t('Assign volunteers')", :aria-label="$t('Assign volunteers')")
-						svg.organizer-action-icon(viewBox="0 0 24 24", aria-hidden="true")
-							path(fill="currentColor", d="M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12M6,10V7H4V10H1V12H4V15H6V12H9V10H6Z")
 		.bottom-info
 			.room(v-if="showRoom && session.room", :title="getLocalizedString(session.room.name)") {{ getLocalizedString(session.room.name) }}
 	assignees-popover(
@@ -99,6 +99,7 @@ div.c-linear-schedule-session.is-shift-session(
 		v-if="canManageShifts",
 		ref="assignDialog",
 		:session="session",
+		:role-id="assignRoleId",
 		:members="members",
 		:error="assignError",
 		:busy="assignBusy",
@@ -195,6 +196,7 @@ export default {
 			editError: '',
 			assignBusy: false,
 			assignError: '',
+			assignRoleId: null,
 			members: [],
 			openAssigneesRoleId: null,
 			assigneesPopoverList: [],
@@ -562,7 +564,8 @@ export default {
 				this.claimBusy = false
 			}
 		},
-		openAssignDialog () {
+		openAssignDialog (role) {
+			this.assignRoleId = role.id
 			this.assignError = ''
 			this.members = []
 			this.$nextTick(() => this.$refs.assignDialog?.show())
@@ -571,6 +574,7 @@ export default {
 		closeAssignDialog () {
 			this.$refs.assignDialog?.close()
 			this.assignError = ''
+			this.assignRoleId = null
 		},
 		async loadMembers () {
 			try {
@@ -579,9 +583,15 @@ export default {
 					credentials: 'same-origin',
 				})
 				const data = await response.json().catch(() => ({}))
-				this.members = Array.isArray(data.members) ? data.members : []
+				if (!response.ok || !Array.isArray(data.members)) {
+					logOperational({action: 'schedule.fetch', outcome: 'failure', backend: 'teamshifts', error_code: response.ok ? 'invalid_payload' : 'http_error', status: response.status})
+					this.assignError = this.$t('Could not load team members.')
+					return
+				}
+				this.members = data.members
 			} catch {
-				this.members = []
+				logOperational({action: 'schedule.fetch', outcome: 'failure', backend: 'teamshifts', error_code: 'network_error'})
+				this.assignError = this.$t('Could not load team members.')
 			}
 		},
 		async assignMember ({ roleId, userId }) {
@@ -680,22 +690,9 @@ export default {
 		color: $clr-danger
 		&:hover
 			background-color: rgba(217, 83, 79, 0.1)
-	&.role-assign-btn
-		width: 32px
-		height: 32px
-		border: 1px solid $clr-grey-300
-		border-radius: 4px
-		background-color: $clr-grey-100
-		color: $clr-secondary-text-light
-		&:hover
-			background-color: $clr-grey-200
-			color: $clr-primary-text-light
 .organizer-action-icon
 	width: 16px
 	height: 16px
-	.role-assign-btn &
-		width: 18px
-		height: 18px
 .c-linear-schedule-session.is-shift-session
 	z-index: 10
 	display: flex

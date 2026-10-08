@@ -1,8 +1,8 @@
 <template lang="pug">
-dialog.pretalx-modal.shift-edit-modal(ref="modal", @click="onBackdrop", @cancel.prevent="cancel")
+dialog.pretalx-modal.shift-edit-modal(ref="modal", :aria-labelledby="titleId", @click="onBackdrop", @cancel.prevent="cancel")
 	.dialog-inner(@click.stop="")
 		h3.shift-edit-title
-			span {{ $t('Edit shift') }}
+			span(:id="titleId") {{ $t('Edit shift') }}
 			button.modal-close-btn(type="button", aria-label="Close dialog", @click="cancel") ✕
 		p.shift-edit-error(v-if="error") {{ error }}
 		form(@submit.prevent="submit")
@@ -30,7 +30,7 @@ dialog.pretalx-modal.shift-edit-modal(ref="modal", @click="onBackdrop", @cancel.
 					.role-row(v-for="(row, index) in form.roles", :key="index")
 						select.form-control.role-select(v-model="row.id")
 							option(value="") {{ $t('Select a role') }}
-							option(v-for="role in roles", :key="role.id", :value="role.id") {{ getLocalizedString(role.name) }}
+							option(v-for="role in availableRoles(index)", :key="role.id", :value="role.id") {{ getLocalizedString(role.name) }}
 						input.form-control.role-capacity(type="number", min="1", v-model.number="row.capacity")
 						button.role-row-remove(type="button", :aria-label="$t('Remove')", @click="removeRole(index)")
 							svg.role-row-remove-icon(viewBox="0 0 24 24", aria-hidden="true")
@@ -44,77 +44,97 @@ dialog.pretalx-modal.shift-edit-modal(ref="modal", @click="onBackdrop", @cancel.
 				bunt-button#btn-save(type="submit", :loading="busy") {{ $t('Save') }}
 </template>
 
-<script>
+<script setup>
+import { ref, useId } from 'vue'
 import moment from 'moment-timezone'
 import { getLocalizedString } from '../utils'
 
-export default {
-	name: 'ShiftEditDialog',
-	emits: ['save', 'cancel'],
-	props: {
-		rooms: { type: Array, default: () => [] },
-		roles: { type: Array, default: () => [] },
-		timezone: { type: String, default: 'UTC' },
-		error: { type: String, default: '' },
-		busy: { type: Boolean, default: false },
-	},
-	data () {
-		return {
-			getLocalizedString,
-			form: {
-				title: '',
-				description: '',
-				start: '',
-				end: '',
-				room: '',
-				roles: [],
-			},
-		}
-	},
-	methods: {
-		show (session) {
-			this.form = {
-				title: getLocalizedString(session?.title) || '',
-				description: session?.description || '',
-				start: session?.start ? session.start.clone().tz(this.timezone).format('YYYY-MM-DDTHH:mm') : '',
-				end: session?.end ? session.end.clone().tz(this.timezone).format('YYYY-MM-DDTHH:mm') : '',
-				room: session?.room?.id ?? '',
-				roles: (session?.roles || []).map(role => ({ id: role.id, capacity: role.capacity ?? 1 })),
-			}
-			this.$refs.modal?.showModal?.()
-		},
-		close () {
-			if (this.$refs.modal?.open) this.$refs.modal.close()
-		},
-		cancel () {
-			this.close()
-			this.$emit('cancel')
-		},
-		onBackdrop (event) {
-			if (event.target === this.$refs.modal) this.cancel()
-		},
-		addRole () {
-			this.form.roles.push({ id: '', capacity: 1 })
-		},
-		removeRole (index) {
-			this.form.roles.splice(index, 1)
-		},
-		submit () {
-			const start = moment.tz(this.form.start, this.timezone)
-			const end = moment.tz(this.form.end, this.timezone)
-			this.$emit('save', {
-				title: { en: this.form.title },
-				description: this.form.description,
-				start: start.toISOString(),
-				end: end.toISOString(),
-				room: this.form.room || null,
-				roles: this.form.roles
-					.filter(row => row.id)
-					.map(row => ({ id: row.id, capacity: Number(row.capacity) || 1 })),
-			})
-		},
-	},
+const INPUT_FORMAT = 'YYYY-MM-DDTHH:mm'
+
+const props = defineProps({
+	rooms: { type: Array, default: () => [] },
+	roles: { type: Array, default: () => [] },
+	timezone: { type: String, default: 'UTC' },
+	error: { type: String, default: '' },
+	busy: { type: Boolean, default: false },
+})
+
+const emit = defineEmits(['save', 'cancel'])
+
+const titleId = useId()
+const modal = ref(null)
+const form = ref({ title: '', description: '', start: '', end: '', room: '', roles: [] })
+const original = ref({ start: null, end: null, startInput: '', endInput: '' })
+
+function toInput (value) {
+	return value ? value.clone().tz(props.timezone).format(INPUT_FORMAT) : ''
 }
+
+// Resend unchanged times as-is: reparsing the minute-precision local string drops seconds and picks the earlier repeated DST hour.
+function toPayloadTime (input, originalValue, originalInput) {
+	if (originalValue && input === originalInput) return originalValue.toISOString()
+	return moment.tz(input, props.timezone).toISOString()
+}
+
+function show (session) {
+	original.value = {
+		start: session?.start ?? null,
+		end: session?.end ?? null,
+		startInput: toInput(session?.start),
+		endInput: toInput(session?.end),
+	}
+	form.value = {
+		title: getLocalizedString(session?.title) || '',
+		description: session?.description || '',
+		start: original.value.startInput,
+		end: original.value.endInput,
+		room: session?.room?.id ?? '',
+		roles: (session?.roles || []).map(role => ({ id: role.id, capacity: role.capacity ?? 1 })),
+	}
+	modal.value?.showModal?.()
+}
+
+function close () {
+	if (modal.value?.open) modal.value.close()
+}
+
+function cancel () {
+	close()
+	emit('cancel')
+}
+
+function onBackdrop (event) {
+	if (event.target === modal.value) cancel()
+}
+
+function availableRoles (index) {
+	const takenElsewhere = new Set(form.value.roles.filter((_, i) => i !== index).map(row => row.id).filter(Boolean))
+	return props.roles.filter(role => !takenElsewhere.has(role.id))
+}
+
+function addRole () {
+	form.value.roles.push({ id: '', capacity: 1 })
+}
+
+function removeRole (index) {
+	form.value.roles.splice(index, 1)
+}
+
+function submit () {
+	const { start, end, startInput, endInput } = original.value
+	emit('save', {
+		title: { en: form.value.title },
+		description: form.value.description,
+		start: toPayloadTime(form.value.start, start, startInput),
+		end: toPayloadTime(form.value.end, end, endInput),
+		room: form.value.room || null,
+		roles: form.value.roles
+			.filter(row => row.id)
+			.map(row => ({ id: row.id, capacity: Number(row.capacity) || 1 })),
+	})
+}
+
+defineExpose({ show, close })
 </script>
 
 <style lang="stylus">

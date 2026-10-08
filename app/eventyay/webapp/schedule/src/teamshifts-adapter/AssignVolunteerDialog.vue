@@ -1,69 +1,83 @@
 <template lang="pug">
-dialog.pretalx-modal.assign-volunteer-modal(ref="modal", @click="onBackdrop", @cancel.prevent="cancel")
+dialog.pretalx-modal.assign-volunteer-modal(ref="modal", :aria-labelledby="titleId", @click="onBackdrop", @cancel.prevent="cancel")
 	.dialog-inner(@click.stop="")
 		h3.assign-volunteer-title
-			span {{ $t('Assign volunteers') }}
+			span(:id="titleId") {{ $t('Assign volunteers') }}
 			button.modal-close-btn(type="button", aria-label="Close dialog", @click="cancel") ✕
 		p.assign-volunteer-error(v-if="error") {{ error }}
-		.assign-data
-			.assign-role(v-for="role in session?.roles || []", :key="role.id")
-				h4 {{ getLocalizedString(role.name) }} ({{ getAssignedList(role).length }}/{{ role.capacity }} {{ $t('assigned') }})
-				div
-					span.member-chip(v-for="assignee in getAssignedList(role)", :key="assignee.id")
-						| {{ assignee.name }}
-						button.member-chip-remove(type="button", :disabled="busy", :aria-label="$t('Unassign')", :title="$t('Unassign')", @click="$emit('unassign', { roleId: role.id, userId: assignee.id })") ✕
-					p.text-muted(v-if="!getAssignedList(role).length") {{ $t('No members assigned yet.') }}
-				.assign-new.form-group.row
-					select.form-control(v-model="selectedMemberId[role.id]")
-						option(value="") {{ $t('Select a member') }}
-						option(v-for="member in members", :key="member.id", :value="member.id") {{ member.name }}{{ member.email ? ` (${member.email})` : '' }}
-					button.assign-btn(type="button", :disabled="busy || !selectedMemberId[role.id]", @click="assign(role)") {{ $t('Assign') }}
+		.assign-role(v-if="role")
+			h4 {{ getLocalizedString(role.name) }} ({{ assigned.length }}/{{ role.capacity }} {{ $t('assigned') }})
+			div
+				span.member-chip(v-for="assignee in assigned", :key="assignee.id")
+					| {{ assignee.name }}
+					button.member-chip-remove(type="button", :disabled="busy", :aria-label="$t('Unassign')", :title="$t('Unassign')", @click="emit('unassign', { roleId: role.id, userId: assignee.id })") ✕
+				p.text-muted(v-if="!assigned.length") {{ $t('No members assigned yet.') }}
+			.assign-new
+				select.form-control(v-model="selectedMemberId", :disabled="isFull", :aria-label="$t('Select a member')")
+					option(value="") {{ $t('Select a member') }}
+					option(v-for="member in assignableMembers", :key="member.id", :value="member.id") {{ member.name }}{{ member.email ? ` (${member.email})` : '' }}
+				button.assign-btn(type="button", :disabled="busy || isFull || !selectedMemberId", @click="assign(selectedMemberId)") {{ $t('Assign') }}
+			p.text-muted.assign-full(v-if="isFull") {{ $t('This role is full.') }}
 		.button-row
 			bunt-button#btn-close(type="button", :disabled="busy", @click="cancel") {{ $t('Close') }}
 </template>
 
-<script>
+<script setup>
+import { computed, ref, useId, watch } from 'vue'
 import { getLocalizedString } from '../utils'
 import { getAssignedList } from './index'
 
-export default {
-	name: 'AssignVolunteerDialog',
-	emits: ['assign', 'unassign', 'cancel'],
-	props: {
-		session: { type: Object, default: null },
-		members: { type: Array, default: () => [] },
-		error: { type: String, default: '' },
-		busy: { type: Boolean, default: false },
-	},
-	data () {
-		return {
-			getLocalizedString,
-			getAssignedList,
-			selectedMemberId: {},
-		}
-	},
-	methods: {
-		show () {
-			this.selectedMemberId = {}
-			this.$refs.modal?.showModal?.()
-		},
-		close () {
-			if (this.$refs.modal?.open) this.$refs.modal.close()
-		},
-		cancel () {
-			this.close()
-			this.$emit('cancel')
-		},
-		onBackdrop (event) {
-			if (event.target === this.$refs.modal) this.cancel()
-		},
-		assign (role) {
-			const userId = this.selectedMemberId[role.id]
-			if (!userId) return
-			this.$emit('assign', { roleId: role.id, userId })
-		},
-	},
+const props = defineProps({
+	session: { type: Object, default: null },
+	roleId: { type: Number, default: null },
+	members: { type: Array, default: () => [] },
+	error: { type: String, default: '' },
+	busy: { type: Boolean, default: false },
+})
+
+const emit = defineEmits(['assign', 'unassign', 'cancel'])
+
+const titleId = useId()
+const modal = ref(null)
+const selectedMemberId = ref('')
+
+const role = computed(() => (props.session?.roles || []).find(r => r.id === props.roleId) || null)
+const assigned = computed(() => getAssignedList(role.value))
+const isFull = computed(() => {
+	const capacity = Number(role.value?.capacity)
+	if (!Number.isFinite(capacity)) return false
+	return capacity <= 0 || assigned.value.length >= capacity
+})
+const assignableMembers = computed(() => props.members.filter(member => !assigned.value.some(user => user.id === member.id)))
+
+watch(() => assigned.value.map(user => user.id), ids => {
+	if (ids.includes(selectedMemberId.value)) selectedMemberId.value = ''
+})
+
+function show () {
+	selectedMemberId.value = ''
+	modal.value?.showModal?.()
 }
+
+function close () {
+	if (modal.value?.open) modal.value.close()
+}
+
+function cancel () {
+	close()
+	emit('cancel')
+}
+
+function onBackdrop (event) {
+	if (event.target === modal.value) cancel()
+}
+
+function assign (userId) {
+	if (!userId || !role.value) return
+	emit('assign', { roleId: role.value.id, userId })
+}
+
+defineExpose({ show, close })
 </script>
 
 <style lang="stylus">
@@ -108,20 +122,18 @@ export default {
 		border-radius: 4px
 		color: #721c24
 		font-size: 14px
-	.assign-data
-		.assign-role
-			margin-bottom: 24px
-			h4
-				font-size: 15px
-				font-weight: 600
-				margin: 0 0 8px
-				color: $clr-grey-700
-			.text-muted
-				font-size: 13px
-				color: $clr-grey-600
-				margin: 0
-		.assign-new
-			align-items: center
+	.assign-role
+		margin-bottom: 24px
+		h4
+			font-size: 15px
+			font-weight: 600
+			margin: 0 0 8px
+			color: $clr-grey-700
+		.text-muted
+			font-size: 13px
+			color: $clr-grey-600
+			margin: 0
+		.assign-full
 			margin-top: 8px
 	.member-chip
 		display: inline-flex
@@ -154,7 +166,9 @@ export default {
 				cursor: default
 	.assign-new
 		display: flex
+		align-items: center
 		gap: 8px
+		margin-top: 8px
 		.form-control
 			flex: auto
 			font-size: 14px
@@ -181,6 +195,7 @@ export default {
 		display: flex
 		width: 100%
 		margin-top: 8px
+		gap: 8px
 		.bunt-button-content
 			font-size: 16px
 		#btn-close
