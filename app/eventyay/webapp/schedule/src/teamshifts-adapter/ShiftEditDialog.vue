@@ -1,9 +1,8 @@
 <template lang="pug">
 dialog.pretalx-modal.shift-edit-modal(ref="modal", :aria-labelledby="titleId", @click="onBackdrop", @cancel.prevent="cancel")
 	.dialog-inner(@click.stop="")
-		h3.shift-edit-title
-			span(:id="titleId") {{ $t('Edit shift') }}
-			button.modal-close-btn(type="button", aria-label="Close dialog", @click="cancel") ✕
+		button.close-button(type="button", aria-label="Close dialog", @click="cancel") ✕
+		h3(:id="titleId") {{ $t('Edit shift') }}
 		p.shift-edit-error(v-if="error") {{ error }}
 		form(@submit.prevent="submit")
 			.data
@@ -138,37 +137,8 @@ defineExpose({ show, close })
 </script>
 
 <style lang="stylus">
-.shift-edit-modal
-	border: none
-	padding: 0
-	&::backdrop
-		background-color: rgba(0, 0, 0, 0.5)
-	.dialog-inner
-		background-color: $clr-white
-		border-radius: 4px
-		padding: 32px 40px
-		width: unquote("min(680px, 95vw)")
-		max-height: calc(100vh - 48px)
-		overflow-y: auto
-		box-sizing: border-box
-	.shift-edit-title
-		font-size: 22px
-		margin: 0 0 16px
-		display: flex
-		justify-content: space-between
-		align-items: center
-		.modal-close-btn
-			background: none
-			border: none
-			font-size: 20px
-			color: $clr-grey-600
-			cursor: pointer
-			padding: 4px 8px
-			line-height: 1
-			border-radius: 4px
-			&:hover
-				color: $clr-grey-900
-				background-color: rgba(0, 0, 0, 0.05)
+dialog.pretalx-modal.shift-edit-modal
+	max-width: 680px
 	.shift-edit-error
 		display: flex
 		align-items: center

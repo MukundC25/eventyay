@@ -1,9 +1,8 @@
 <template lang="pug">
 dialog.pretalx-modal.assign-volunteer-modal(ref="modal", :aria-labelledby="titleId", @click="onBackdrop", @cancel.prevent="cancel")
 	.dialog-inner(@click.stop="")
-		h3.assign-volunteer-title
-			span(:id="titleId") {{ $t('Assign volunteers') }}
-			button.modal-close-btn(type="button", aria-label="Close dialog", @click="cancel") ✕
+		button.close-button(type="button", aria-label="Close dialog", @click="cancel") ✕
+		h3(:id="titleId") {{ $t('Assign volunteers') }}
 		p.assign-volunteer-error(v-if="error") {{ error }}
 		.assign-role(v-if="role")
 			h4 {{ getLocalizedString(role.name) }} ({{ assigned.length }}/{{ role.capacity }} {{ $t('assigned') }})
@@ -18,8 +17,6 @@ dialog.pretalx-modal.assign-volunteer-modal(ref="modal", :aria-labelledby="title
 					option(v-for="member in assignableMembers", :key="member.id", :value="member.id") {{ member.name }}{{ member.email ? ` (${member.email})` : '' }}
 				button.assign-btn(type="button", :disabled="busy || isFull || !selectedMemberId", @click="assign(selectedMemberId)") {{ $t('Assign') }}
 			p.text-muted.assign-full(v-if="isFull") {{ $t('This role is full.') }}
-		.button-row
-			bunt-button#btn-close(type="button", :disabled="busy", @click="cancel") {{ $t('Close') }}
 </template>
 
 <script setup>
@@ -84,37 +81,8 @@ defineExpose({ show, close })
 </script>
 
 <style lang="stylus">
-.assign-volunteer-modal
-	border: none
-	padding: 0
-	&::backdrop
-		background-color: rgba(0, 0, 0, 0.5)
-	.dialog-inner
-		background-color: $clr-white
-		border-radius: 4px
-		padding: 32px 40px
-		width: unquote("min(680px, 95vw)")
-		max-height: calc(100vh - 48px)
-		overflow-y: auto
-		box-sizing: border-box
-	.assign-volunteer-title
-		font-size: 22px
-		margin: 0 0 16px
-		display: flex
-		justify-content: space-between
-		align-items: center
-		.modal-close-btn
-			background: none
-			border: none
-			font-size: 20px
-			color: $clr-grey-600
-			cursor: pointer
-			padding: 4px 8px
-			line-height: 1
-			border-radius: 4px
-			&:hover
-				color: $clr-grey-900
-				background-color: rgba(0, 0, 0, 0.05)
+dialog.pretalx-modal.assign-volunteer-modal
+	max-width: 680px
 	.assign-volunteer-error
 		display: flex
 		align-items: center
@@ -126,7 +94,6 @@ defineExpose({ show, close })
 		color: #721c24
 		font-size: 14px
 	.assign-role
-		margin-bottom: 24px
 		h4
 			font-size: 15px
 			font-weight: 600
@@ -194,14 +161,4 @@ defineExpose({ show, close })
 		&:disabled
 			opacity: 0.5
 			cursor: default
-	.button-row
-		display: flex
-		width: 100%
-		margin-top: 8px
-		gap: 8px
-		.bunt-button-content
-			font-size: 16px
-		#btn-close
-			margin-left: auto
-			button-style(color: $clr-grey-200)
 </style>
