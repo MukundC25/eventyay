@@ -10,7 +10,7 @@ dialog.pretalx-modal.assign-volunteer-modal(ref="modal", :aria-labelledby="title
 			div
 				span.member-chip(v-for="assignee in assigned", :key="assignee.id")
 					| {{ assignee.name }}
-					button.member-chip-remove(type="button", :disabled="busy", :aria-label="$t('Unassign')", :title="$t('Unassign')", @click="emit('unassign', { roleId: role.id, userId: assignee.id })") ✕
+					button.member-chip-remove(v-if="hasAssigneeIds", type="button", :disabled="busy",:aria-label="$t('Unassign')", :title="$t('Unassign')", @click="emit('unassign', { roleId: role.id, userId: assignee.id })") ✕
 				p.text-muted(v-if="!assigned.length") {{ $t('No members assigned yet.') }}
 			.assign-new
 				select.form-control(v-model="selectedMemberId", :disabled="isFull", :aria-label="$t('Select a member')")
@@ -43,12 +43,15 @@ const selectedMemberId = ref('')
 
 const role = computed(() => (props.session?.roles || []).find(r => r.id === props.roleId) || null)
 const assigned = computed(() => getAssignedList(role.value))
+const hasAssigneeIds = computed(() => Array.isArray(role.value?.assigned))
 const isFull = computed(() => {
 	const capacity = Number(role.value?.capacity)
 	if (!Number.isFinite(capacity)) return false
 	return capacity <= 0 || assigned.value.length >= capacity
 })
-const assignableMembers = computed(() => props.members.filter(member => !assigned.value.some(user => user.id === member.id)))
+const assignableMembers = computed(() => (hasAssigneeIds.value
+	? props.members.filter(member => !assigned.value.some(user => user.id === member.id))
+	: props.members))
 
 watch(() => assigned.value.map(user => user.id), ids => {
 	if (ids.includes(selectedMemberId.value)) selectedMemberId.value = ''
