@@ -9,7 +9,7 @@ dialog.pretalx-modal.assign-volunteer-modal(ref="modal", :aria-labelledby="title
 			div
 				span.member-chip(v-for="assignee in assigned", :key="assignee.id")
 					| {{ assignee.name }}
-					button.member-chip-remove(v-if="hasAssigneeIds", type="button", :disabled="busy",:aria-label="$t('Unassign')", :title="$t('Unassign')", @click="emit('unassign', { roleId: role.id, userId: assignee.id })") ✕
+					button.member-chip-remove(v-if="hasAssigneeIds", type="button", :disabled="busy",:aria-label="$t('Unassign {{name}}', { name: assignee.name })", :title="$t('Unassign {{name}}', { name: assignee.name })", @click="emit('unassign', { roleId: role.id, userId: assignee.id })") ✕
 				p.text-muted(v-if="!assigned.length") {{ $t('No members assigned yet.') }}
 			.assign-new
 				select.form-control(v-model="selectedMemberId", :disabled="isFull", :aria-label="$t('Select a member')")
