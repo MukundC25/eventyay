@@ -44,7 +44,8 @@ div.c-linear-schedule-session.is-shift-session(
 									aria-haspopup="dialog",
 									:aria-expanded="openAssigneesRoleId === roleKey(role) ? 'true' : 'false'",
 									@click.stop="toggleAssigneesPopover(role, $event)",
-									@keydown.esc="closeAssigneesPopover(true)") +{{ hiddenAssigneeCount(role) }} {{ $t('more') }}
+									@keydown.esc="closeAssigneesPopover(true)",
+									@focusout="onAssigneesTriggerFocusOut") +{{ hiddenAssigneeCount(role) }} {{ $t('more') }}
 						span.text-muted(v-if="!assignedList(role).length") {{ $t('None') }}
 				.shift-actions
 					template(v-if="isMyRole(role)")
@@ -330,6 +331,12 @@ export default {
 			this.openAssigneesRoleId = null
 			this.assigneesPopoverList = []
 			if (restoreFocus === true) this.$nextTick(() => trigger?.focus?.())
+		},
+		onAssigneesTriggerFocusOut (event) {
+			const next = event.relatedTarget
+			if (!next || event.currentTarget !== this._assigneesTrigger) return
+			if (this.$refs.assigneesPopover?.contains(next)) return
+			this.closeAssigneesPopover()
 		},
 		onAssigneesPopoverClose (payload) {
 			if (payload?.relatedTarget && payload.relatedTarget === this._assigneesTrigger) return

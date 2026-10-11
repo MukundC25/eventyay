@@ -34,12 +34,15 @@ export default {
 		maxHeight: { type: Number, default: 280 },
 	},
 	methods: {
+		contains (node) {
+			return Boolean(node && this.$refs.panel?.contains(node))
+		},
 		focus () {
 			this.$refs.panel?.focus?.({ preventScroll: true })
 		},
 		onFocusOut (event) {
 			const next = event.relatedTarget
-			if (next && this.$refs.panel?.contains(next)) return
+			if (this.contains(next)) return
 			if (next) this.$emit('close', { restoreFocus: false, relatedTarget: next })
 		},
 	},
@@ -70,6 +73,9 @@ export default {
 	border-radius: 6px
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16)
 	outline: none
+	&:focus-visible
+		outline: 2px solid #2185d0
+		outline-offset: 2px
 	padding: 10px
 	display: flex
 	flex-direction: column
