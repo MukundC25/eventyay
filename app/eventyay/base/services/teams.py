@@ -14,6 +14,8 @@ from eventyay.helpers.urls import build_absolute_uri
 
 logger = logging.getLogger(__name__)
 
+TEAMSHIFTS_PLUGIN_REGEX = r'(^|,)teamshifts(,|$)'
+
 
 def check_full_admin_limit(team, email=None, user=None):
     """
@@ -85,33 +87,31 @@ def check_full_admin_limit(team, email=None, user=None):
     return decision
 
 
-def get_team_invitation_url(team):
-    """
-    Determine the invitation or landing URL for an added team member.
+def _get_teamshifts_events(team):
+    return list(team.events.filter(plugins__regex=TEAMSHIFTS_PLUGIN_REGEX).order_by('pk')[:2])
 
-    If the team has a TeamShifts role assigned,
-    link directly to the TeamShifts organizer dashboard entry point if available.
-    Otherwise, fall back to the standard organizer team management URL.
-    """
-    if team.teamshifts_role:
+
+def _get_teamshifts_member_url(team):
+    events = _get_teamshifts_events(team)
+    if len(events) == 1:
         try:
             return build_absolute_uri(
-                'plugins:teamshifts:organizer_dashboard',
-                kwargs={'organizer': team.organizer.slug},
+                'plugins:teamshifts:dashboard',
+                kwargs={'organizer': team.organizer.slug, 'event': events[0].slug},
             )
         except NoReverseMatch:
-            return build_absolute_uri(
-                'eventyay_common:organizer.teams',
-                kwargs={'organizer': team.organizer.slug},
-            )
+            pass
+    return build_absolute_uri('eventyay_common:dashboard')
 
-    if getattr(team, 'pk', None):
+
+def get_team_invitation_url(team):
+    if team.teamshifts_role:
+        return _get_teamshifts_member_url(team)
+
+    if team.pk:
         return build_absolute_uri(
             'eventyay_common:organizer.team',
-            kwargs={
-                'organizer': team.organizer.slug,
-                'team': team.pk,
-            },
+            kwargs={'organizer': team.organizer.slug, 'team': team.pk},
         )
 
     return build_absolute_uri(
