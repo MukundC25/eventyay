@@ -27,10 +27,10 @@ div.c-linear-schedule-session.is-shift-session(
 			.organizer-actions(v-if="canManageShifts")
 				button.organizer-action-btn(type="button", @pointerdown.stop, @click.stop="openEditDialog", :title="$t('Edit shift')", :aria-label="$t('Edit shift')")
 					svg.organizer-action-icon(viewBox="0 0 24 24", aria-hidden="true")
-						path(fill="currentColor", d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z")
-				button.organizer-action-btn.organizer-action-danger(type="button", @pointerdown.stop, @click.stop="openDeleteConfirm", :title="$t('Delete shift')", :aria-label="$t('Delete shift')")
+						path(fill="currentColor", d="M6.58 20.57 l1.22 -1.22 l-3.15 -3.15 l-1.22 1.22 v1.43 h1.71 v1.71 h1.43 z M13.58 8.14 q0 -0.29 -0.29 -0.29 q-0.13 0 -0.23 0.09 l-7.26 7.26 q-0.09 0.09 -0.09 0.23 q0 0.29 0.29 0.29 q0.13 0 0.23 -0.09 l7.26 -7.26 q0.09 -0.09 0.09 -0.23 z M12.86 5.57 l5.57 5.57 l-11.14 11.14 h-5.57 v-5.57 z M22 6.86 q0 0.71 -0.5 1.21 l-2.22 2.22 l-5.57 -5.57 l2.22 -2.21 q0.48 -0.51 1.21 -0.51 q0.71 0 1.22 0.51 l3.15 3.13 q0.5 0.52 0.5 1.22 z")
+				button.organizer-action-btn(type="button", @pointerdown.stop, @click.stop="openDeleteConfirm", :title="$t('Delete shift')", :aria-label="$t('Delete shift')")
 					svg.organizer-action-icon(viewBox="0 0 24 24", aria-hidden="true")
-						path(fill="currentColor", d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z")
+						path(fill="currentColor", d="M9.43 18.43 v-9.43 q0 -0.19 -0.12 -0.31 t-0.31 -0.12 h-0.86 q-0.19 0 -0.31 0.12 t-0.12 0.31 v9.43 q0 0.19 0.12 0.31 t0.31 0.12 h0.86 q0.19 0 0.31 -0.12 t0.12 -0.31 z M12.86 18.43 v-9.43 q0 -0.19 -0.12 -0.31 t-0.31 -0.12 h-0.86 q-0.19 0 -0.31 0.12 t-0.12 0.31 v9.43 q0 0.19 0.12 0.31 t0.31 0.12 h0.86 q0.19 0 0.31 -0.12 t0.12 -0.31 z M16.29 18.43 v-9.43 q0 -0.19 -0.12 -0.31 t-0.31 -0.12 h-0.86 q-0.19 0 -0.31 0.12 t-0.12 0.31 v9.43 q0 0.19 0.12 0.31 t0.31 0.12 h0.86 q0.19 0 0.31 -0.12 t0.12 -0.31 z M9 5.14 h6 l-0.64 -1.57 q-0.09 -0.12 -0.23 -0.15 h-4.25 q-0.13 0.03 -0.23 0.15 z M21.43 5.57 v0.86 q0 0.19 -0.12 0.31 t-0.31 0.12 h-1.29 v12.7 q0 1.11 -0.63 1.92 t-1.51 0.81 h-11.14 q-0.88 0 -1.51 -0.78 t-0.63 -1.9 v-12.75 h-1.29 q-0.19 0 -0.31 -0.12 t-0.12 -0.31 v-0.86 q0 -0.19 0.12 -0.31 t0.31 -0.12 h4.14 l0.94 -2.24 q0.2 -0.5 0.72 -0.84 t1.06 -0.35 h4.29 q0.54 0 1.06 0.35 t0.72 0.84 l0.94 2.24 h4.14 q0.19 0 0.31 0.12 t0.12 0.31 z")
 		.roles-list(v-if="session.roles && session.roles.length")
 			.role-item(v-for="(role, index) in session.roles", :key="role.id ?? index")
 				.role-content
@@ -55,7 +55,7 @@ div.c-linear-schedule-session.is-shift-session(
 				.shift-actions
 					template(v-if="canManageShifts")
 						button.btn.btn-sm.btn-danger(v-if="isMyRole(role)", type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
-						button.btn.btn-sm.btn-primary(type="button", :disabled="assignBusy", @click.stop="openAssignDialog(role)") {{ $t('Sign Up') }}
+						button.btn.btn-sm.btn-primary(type="button", :disabled="assignBusy", @click.stop="openAssignDialog(role)") {{ $t('Assign') }}
 					template(v-else-if="isMyRole(role)")
 						button.btn.btn-sm.btn-danger(type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
 					template(v-else-if="canClaimRole(role)")
@@ -673,26 +673,17 @@ export default {
 .organizer-action-btn
 	display: inline-flex
 	align-items: center
-	justify-content: center
 	flex-shrink: 0
-	width: 26px
-	height: 26px
 	padding: 0
 	border: none
-	border-radius: 4px
 	background: transparent
-	color: $clr-secondary-text-light
+	color: #2185d0
 	cursor: pointer
 	&:hover
-		background-color: rgba(0, 0, 0, 0.06)
-		color: $clr-primary-text-light
-	&.organizer-action-danger
-		color: $clr-danger
-		&:hover
-			background-color: rgba(217, 83, 79, 0.1)
+		color: #1a6fb5
 .organizer-action-icon
-	width: 16px
-	height: 16px
+	width: 14px
+	height: 14px
 .c-linear-schedule-session.is-shift-session
 	z-index: 10
 	display: flex
@@ -802,7 +793,7 @@ export default {
 		.organizer-actions
 			display: flex
 			flex-shrink: 0
-			gap: 2px
+			gap: 28px
 		.bottom-info
 			flex: auto
 			display: flex

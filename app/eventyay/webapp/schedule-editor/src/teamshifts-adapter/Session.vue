@@ -325,6 +325,10 @@ function onPointerDown(event: PointerEvent): void {
 
 <style lang="stylus">
 .c-linear-schedule-session.is-shift-session
+	.time-box
+		.start
+			align-items: center
+			text-align: center
 	.roles-list
 		display: flex
 		flex-direction: column
