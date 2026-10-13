@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +9,6 @@ from django_scopes import scope
 
 from eventyay.base.models import Event, Organizer, Team, User
 from eventyay.base.services.teams import get_team_invitation_url, send_team_invitation_email
-from eventyay.helpers.urls import build_absolute_uri
 
 
 @pytest.fixture
@@ -30,12 +30,14 @@ def test_get_team_invitation_url_standard_team(organizer):
     assert url.endswith(f'/common/organizer/test-org/team/{team.pk}')
 
 
-def _create_event(organizer, slug, plugins='teamshifts'):
+def _create_event(organizer, slug, plugins='teamshifts', days_from_now=0):
+    start = now() + timedelta(days=days_from_now)
     return Event.objects.create(
         organizer=organizer,
         name=slug,
         slug=slug,
-        date_from=now(),
+        date_from=start,
+        date_to=start + timedelta(days=1),
         plugins=plugins,
     )
 
@@ -65,18 +67,35 @@ def test_get_team_invitation_url_limited_team_links_to_its_event(organizer, team
 
 
 @pytest.mark.django_db
-def test_get_team_invitation_url_multiple_events_links_to_common_dashboard(organizer):
-    _create_event(organizer, 'one')
-    _create_event(organizer, 'two')
+def test_get_team_invitation_url_multiple_events_prefers_soonest_upcoming(organizer, teamshifts_installed):
+    _create_event(organizer, 'past', days_from_now=-30)
+    _create_event(organizer, 'later', days_from_now=60)
+    _create_event(organizer, 'soon', days_from_now=10)
     team = Team.objects.create(organizer=organizer, name='Shifts Team', teamshifts_role='coordinator', all_events=True)
-    assert get_team_invitation_url(team) == build_absolute_uri('eventyay_common:dashboard')
+    assert get_team_invitation_url(team).endswith('/teamshifts/event/test-org/soon/')
 
 
 @pytest.mark.django_db
-def test_get_team_invitation_url_no_teamshifts_event_links_to_common_dashboard(organizer):
+def test_get_team_invitation_url_only_past_events_uses_latest(organizer, teamshifts_installed):
+    _create_event(organizer, 'older', days_from_now=-90)
+    _create_event(organizer, 'newer', days_from_now=-30)
+    team = Team.objects.create(organizer=organizer, name='Shifts Team', teamshifts_role='lead', all_events=True)
+    assert get_team_invitation_url(team).endswith('/teamshifts/event/test-org/newer/')
+
+
+@pytest.mark.django_db
+def test_get_team_invitation_url_skips_events_without_teamshifts(organizer, teamshifts_installed):
+    _create_event(organizer, 'plain', plugins='', days_from_now=5)
+    _create_event(organizer, 'shifts', days_from_now=20)
+    team = Team.objects.create(organizer=organizer, name='Shifts Team', teamshifts_role='lead', all_events=True)
+    assert get_team_invitation_url(team).endswith('/teamshifts/event/test-org/shifts/')
+
+
+@pytest.mark.django_db
+def test_get_team_invitation_url_no_teamshifts_event_uses_team_page(organizer):
     _create_event(organizer, 'plain', plugins='')
     team = Team.objects.create(organizer=organizer, name='Shifts Team', teamshifts_role='coordinator', all_events=True)
-    assert get_team_invitation_url(team) == build_absolute_uri('eventyay_common:dashboard')
+    assert get_team_invitation_url(team).endswith(f'/common/organizer/test-org/team/{team.pk}')
 
 
 @pytest.mark.django_db
@@ -85,18 +104,18 @@ def test_get_team_invitation_url_ignores_events_outside_team_scope(organizer):
     inside = _create_event(organizer, 'inside', plugins='')
     team = Team.objects.create(organizer=organizer, name='Lead Team', teamshifts_role='lead', all_events=False)
     team.limit_events.add(inside)
-    assert get_team_invitation_url(team) == build_absolute_uri('eventyay_common:dashboard')
+    assert get_team_invitation_url(team).endswith(f'/common/organizer/test-org/team/{team.pk}')
 
 
 @pytest.mark.django_db
-def test_get_team_invitation_url_unavailable_plugin_route_links_to_common_dashboard(organizer):
+def test_get_team_invitation_url_unavailable_plugin_route_uses_team_page(organizer):
     _create_event(organizer, 'conf')
     team = Team.objects.create(organizer=organizer, name='Lead Team', teamshifts_role='lead', all_events=True)
     with patch(
         'eventyay.base.services.teams.build_absolute_uri',
-        side_effect=[NoReverseMatch('Plugin not installed'), 'http://localhost/common/'],
+        side_effect=[NoReverseMatch('Plugin not installed'), 'http://localhost/team/'],
     ):
-        assert get_team_invitation_url(team) == 'http://localhost/common/'
+        assert get_team_invitation_url(team) == 'http://localhost/team/'
 
 
 @pytest.mark.django_db
