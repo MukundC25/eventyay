@@ -107,7 +107,7 @@ def _get_team_page_url(team):
 
 
 def get_team_invitation_url(team):
-    if team.teamshifts_role:
+    if team.teamshifts_role and team.pk:
         event = _get_teamshifts_invitation_event(team)
         if event:
             try:

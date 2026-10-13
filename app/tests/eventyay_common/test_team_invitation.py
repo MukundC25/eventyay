@@ -119,6 +119,13 @@ def test_get_team_invitation_url_unavailable_plugin_route_uses_team_page(organiz
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize('all_events', [True, False])
+def test_get_team_invitation_url_unsaved_teamshifts_team_uses_teams_page(organizer, all_events):
+    team = Team(organizer=organizer, name='Unsaved', teamshifts_role='lead', all_events=all_events)
+    assert get_team_invitation_url(team).endswith('/common/organizer/test-org/teams')
+
+
+@pytest.mark.django_db
 def test_get_team_invitation_url_standard_team_no_pk(organizer):
     mock_team = MagicMock(organizer=organizer, teamshifts_role='', pk=None)
     url = get_team_invitation_url(mock_team)
