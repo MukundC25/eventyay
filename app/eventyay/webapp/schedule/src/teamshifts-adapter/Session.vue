@@ -33,20 +33,10 @@ div.c-linear-schedule-session.is-shift-session(
 						span.role-divider
 						span.role-badge(:class="'badge-' + getCapacityStatus(role)") {{ capacityLabel(role) }}
 					.role-assignees
-						template(v-if="assignedList(role).length")
-							span.role-assignee(v-for="(user, i) in previewAssignees(role)", :key="user.id || i")
-								svg.role-user-icon(viewBox="0 0 24 24", aria-hidden="true")
-									path(fill="currentColor", d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z")
+						ul.role-assignee-list(v-if="assignedList(role).length")
+							li.role-assignee(v-for="(user, i) in sortedAssignees(role)", :key="user.id || i")
 								span.role-assignee-name {{ user.name }}
-							.role-assignees-more-wrap(v-if="hiddenAssigneeCount(role)")
-								button.role-assignees-more(
-									type="button",
-									aria-haspopup="dialog",
-									:aria-expanded="openAssigneesRoleId === roleKey(role) ? 'true' : 'false'",
-									@click.stop="toggleAssigneesPopover(role, $event)",
-									@keydown.esc="closeAssigneesPopover(true)",
-									@focusout="onAssigneesTriggerFocusOut") +{{ hiddenAssigneeCount(role) }} {{ $t('more') }}
-						span.text-muted(v-if="!assignedList(role).length") {{ $t('None') }}
+						span.text-muted(v-else) {{ $t('None') }}
 				.shift-actions
 					template(v-if="isMyRole(role)")
 						button.btn.btn-sm.btn-danger(type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
@@ -58,17 +48,6 @@ div.c-linear-schedule-session.is-shift-session(
 						span.text-muted {{ $t('Full') }}
 		.bottom-info
 			.room(v-if="showRoom && session.room", :title="getLocalizedString(session.room.name)") {{ getLocalizedString(session.room.name) }}
-	assignees-popover(
-		:open="openAssigneesRoleId != null",
-		:target="assigneesPopoverTarget",
-		ref="assigneesPopover",
-		@close="onAssigneesPopoverClose",
-		:title="assigneesPopoverTitle",
-		:assignees="assigneesPopoverList",
-		:top="assigneesPopoverPos.top",
-		:left="assigneesPopoverPos.left",
-		:width="assigneesPopoverPos.width",
-		:max-height="assigneesPopoverPos.maxHeight")
 	shift-confirm-dialog(
 		ref="shiftConfirm",
 		:title="confirmTitle",
@@ -84,14 +63,12 @@ div.c-linear-schedule-session.is-shift-session(
 
 <script>
 import ShiftConfirmDialog from './ShiftConfirmDialog.vue'
-import AssigneesPopover from './AssigneesPopover.vue'
 import { getLocalizedString, getPrettyDuration, getSessionTime, getCsrfToken } from '../utils'
 import { logOperational } from '../operationalLog.js'
 import {
 	getCapacityStatus,
 	getAssignedList,
-	previewAssignees,
-	hiddenAssigneeCount,
+	sortedAssignees,
 	getCurrentUserId,
 	getCurrentUserName,
 	getShiftTrackColor,
@@ -99,25 +76,10 @@ import {
 	withdrawUrl,
 } from './index'
 
-function placeAssigneesPopover (anchorEl) {
-	const rect = anchorEl.getBoundingClientRect()
-	const width = Math.min(280, Math.max(200, window.innerWidth - 16))
-	const maxHeight = Math.min(280, window.innerHeight - 16)
-	let left = rect.left
-	let top = rect.bottom + 6
-	if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8
-	if (left < 8) left = 8
-	if (top + 140 > window.innerHeight) {
-		top = Math.max(8, rect.top - 6 - Math.min(maxHeight, 200))
-	}
-	return { top, left, width, maxHeight }
-}
-
 export default {
 	name: 'TeamshiftsSession',
 	components: {
 		ShiftConfirmDialog,
-		AssigneesPopover,
 	},
 	props: {
 		now: Object,
@@ -149,42 +111,12 @@ export default {
 			getSessionTime,
 			getCapacityStatus,
 			getAssignedList,
-			previewAssignees,
-			hiddenAssigneeCount,
+			sortedAssignees,
 			claimBusy: false,
 			confirmAction: null,
 			confirmRole: null,
 			confirmError: '',
-			openAssigneesRoleId: null,
-			assigneesPopoverList: [],
-			assigneesPopoverTitle: 'Assigned',
-			assigneesPopoverTarget: 'body',
-			assigneesPopoverPos: { top: 0, left: 0, width: 260, maxHeight: 280 },
 		}
-	},
-	mounted () {
-		this._onAssigneesDocPointerDown = (event) => {
-			if (this.openAssigneesRoleId == null) return
-			const path = event.composedPath?.() || []
-			const inside = path.some((node) => {
-				const el = node
-				return el?.classList?.contains?.('role-assignees-popover') || el === this._assigneesTrigger
-			})
-			if (inside) return
-			this.closeAssigneesPopover()
-		}
-		this._onScroll = (event) => {
-			if (this.openAssigneesRoleId == null) return
-			const path = event.composedPath?.() || []
-			if (path.some(node => node?.classList?.contains?.('role-assignees-popover'))) return
-			this.closeAssigneesPopover()
-		}
-		document.addEventListener('pointerdown', this._onAssigneesDocPointerDown, true)
-		window.addEventListener('scroll', this._onScroll, true)
-	},
-	beforeUnmount () {
-		document.removeEventListener('pointerdown', this._onAssigneesDocPointerDown, true)
-		window.removeEventListener('scroll', this._onScroll, true)
 	},
 	computed: {
 		effectiveTimezone () {
@@ -325,43 +257,6 @@ export default {
 		capacityLabel (role) {
 			return this.$t('{{assigned}}/{{capacity}} needed', { assigned: getAssignedList(role).length, capacity: role.capacity })
 		},
-		closeAssigneesPopover (restoreFocus = false) {
-			const trigger = this._assigneesTrigger
-			this._assigneesTrigger = null
-			this.openAssigneesRoleId = null
-			this.assigneesPopoverList = []
-			if (restoreFocus === true) this.$nextTick(() => trigger?.focus?.())
-		},
-		onAssigneesTriggerFocusOut (event) {
-			const next = event.relatedTarget
-			if (!next || event.currentTarget !== this._assigneesTrigger) return
-			if (this.$refs.assigneesPopover?.contains(next)) return
-			this.closeAssigneesPopover()
-		},
-		onAssigneesPopoverClose (payload) {
-			if (payload?.relatedTarget && payload.relatedTarget === this._assigneesTrigger) return
-			this.closeAssigneesPopover(payload?.restoreFocus)
-		},
-		toggleAssigneesPopover (role, event) {
-			const roleId = this.roleKey(role)
-			if (this.openAssigneesRoleId === roleId) {
-				this.closeAssigneesPopover(true)
-				return
-			}
-			const list = getAssignedList(role)
-			this.assigneesPopoverList = list
-			this.assigneesPopoverTitle = `Assigned (${list.length})`
-			const trigger = event.currentTarget
-			const root = trigger.getRootNode?.()
-			this.assigneesPopoverTarget = (typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot) ? root : 'body'
-			this.assigneesPopoverPos = placeAssigneesPopover(trigger)
-			this._assigneesTrigger = trigger
-			this.openAssigneesRoleId = roleId
-			this.$nextTick(() => this.$refs.assigneesPopover?.focus())
-		},
-		roleKey (role) {
-			return role.id ?? role.name
-		},
 		roleName (role) {
 			return getLocalizedString(role.name)
 		},
@@ -385,7 +280,6 @@ export default {
 		async postRoleAction (url, role) {
 			this.claimBusy = true
 			this.confirmError = ''
-			this.closeAssigneesPopover()
 			try {
 				const headers = {
 					'Content-Type': 'application/json',
@@ -621,38 +515,27 @@ export default {
 							border-color: #c9920a
 							color: #c9920a
 				.role-assignees
-					position: relative
-					display: flex
-					flex-wrap: wrap
-					align-items: center
-					gap: 6px 12px
-					font-size: 12px
-					color: #6c757d
-					margin-top: 4px
-					.role-assignee
-						display: inline-flex
-						align-items: center
-						gap: 6px
-						min-width: 0
-					.role-assignee-name
-						min-width: 0
-					.role-user-icon
-						width: 11px
-						height: 11px
-						flex-shrink: 0
-					.role-assignees-more-wrap
-						position: relative
-					.role-assignees-more
-						border: none
-						background: transparent
-						color: #2185d0
-						font-size: 12px
-						font-weight: 600
-						line-height: 1.3
+					margin-top: 6px
+					.role-assignee-list
+						list-style: none
+						margin: 0
 						padding: 0
-						cursor: pointer
-						&:hover
-							text-decoration: underline
+						display: flex
+						flex-wrap: wrap
+						gap: 4px 6px
+					.role-assignee
+						list-style: none
+						margin: 0
+						padding: 3px 9px
+						max-width: 100%
+						font-size: 12px
+						line-height: 1.3
+						color: $clr-secondary-text-light
+						background-color: $clr-grey-100
+						border-radius: 999px
+						overflow-wrap: anywhere
+						&::marker
+							content: none
 			.shift-actions
 				display: flex
 				align-items: center
