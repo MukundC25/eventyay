@@ -55,7 +55,7 @@ div.c-linear-schedule-session.is-shift-session(
 				.shift-actions
 					template(v-if="canManageShifts")
 						button.btn.btn-sm.btn-danger(v-if="isMyRole(role)", type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
-						button.btn.btn-sm.btn-primary(type="button", :disabled="assignBusy", @click.stop="openAssignDialog(role)") {{ $t('Assign') }}
+						button.btn.btn-sm.btn-primary(type="button", :disabled="assignBusy", @click.stop="openAssignDialog(role)") {{ $t('Sign Up') }}
 					template(v-else-if="isMyRole(role)")
 						button.btn.btn-sm.btn-danger(type="button", :disabled="claimBusy", @click.stop="openConfirm('drop', role)") {{ $t('Drop') }}
 					template(v-else-if="canClaimRole(role)")

@@ -39,8 +39,8 @@ dialog.pretalx-modal.shift-edit-modal(ref="modal", :aria-labelledby="titleId", @
 							path(fill="currentColor", d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z")
 						span {{ $t('Add role') }}
 			.button-row
-				bunt-button#btn-cancel(type="button", :disabled="busy", @click="cancel") {{ $t('Cancel') }}
-				bunt-button#btn-save(type="submit", :loading="busy") {{ $t('Save') }}
+				bunt-button.btn-cancel(type="button", :disabled="busy", @click="cancel") {{ $t('Cancel') }}
+				bunt-button.btn-save(type="submit", :loading="busy") {{ $t('Save') }}
 </template>
 
 <script setup>
@@ -76,6 +76,7 @@ function toPayloadTime (input, originalValue, originalInput) {
 }
 
 function show (session) {
+	const room = session?.room
 	original.value = {
 		start: session?.start ?? null,
 		end: session?.end ?? null,
@@ -87,7 +88,7 @@ function show (session) {
 		description: session?.description || '',
 		start: original.value.startInput,
 		end: original.value.endInput,
-		room: session?.room?.id ?? '',
+		room: (room && typeof room === 'object' ? room.id : room) ?? '',
 		roles: (session?.roles || []).map(role => ({ id: role.id, capacity: role.capacity ?? 1 })),
 	}
 	modal.value?.showModal?.()
@@ -230,9 +231,9 @@ dialog.pretalx-modal.shift-edit-modal
 		gap: 8px
 		.bunt-button-content
 			font-size: 16px
-		#btn-cancel
+		.btn-cancel
 			button-style(color: $clr-grey-200)
-		#btn-save
+		.btn-save
 			margin-left: auto
 			font-weight: bold
 			button-style(color: $clr-primary)
