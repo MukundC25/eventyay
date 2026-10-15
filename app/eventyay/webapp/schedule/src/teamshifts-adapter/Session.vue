@@ -879,6 +879,7 @@ export default {
 					color: #fff
 				.text-muted
 					font-size: 11px
+					color: #888
 	&:hover
 		.info
 			border: 1px solid var(--track-color)
