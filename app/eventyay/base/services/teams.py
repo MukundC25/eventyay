@@ -2,7 +2,6 @@ import logging
 
 from django.db.models.functions import Lower
 from django.urls import NoReverseMatch
-from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
 from eventyay.base.entitlements import EntitlementDecision, check_entitlement
@@ -88,36 +87,38 @@ def check_full_admin_limit(team, email=None, user=None):
     return decision
 
 
-def _get_teamshifts_invitation_event(team):
-    events = team.events.filter(plugins__regex=TEAMSHIFTS_PLUGIN_REGEX)
-    upcoming = events.filter(date_to__gte=now()).order_by('date_from').first()
-    return upcoming or events.order_by('-date_from').first()
+def _get_teamshifts_events(team):
+    return list(team.events.filter(plugins__regex=TEAMSHIFTS_PLUGIN_REGEX).order_by('pk')[:2])
 
 
-def _get_team_page_url(team):
+def _get_teamshifts_member_url(team):
+    if team.pk:
+        events = _get_teamshifts_events(team)
+        if len(events) == 1:
+            try:
+                return build_absolute_uri(
+                    'plugins:teamshifts:dashboard',
+                    kwargs={'organizer': team.organizer.slug, 'event': events[0].slug},
+                )
+            except NoReverseMatch:
+                pass
+    return build_absolute_uri('eventyay_common:dashboard')
+
+
+def get_team_invitation_url(team):
+    if team.teamshifts_role:
+        return _get_teamshifts_member_url(team)
+
     if team.pk:
         return build_absolute_uri(
             'eventyay_common:organizer.team',
             kwargs={'organizer': team.organizer.slug, 'team': team.pk},
         )
+
     return build_absolute_uri(
         'eventyay_common:organizer.teams',
         kwargs={'organizer': team.organizer.slug},
     )
-
-
-def get_team_invitation_url(team):
-    if team.teamshifts_role and team.pk:
-        event = _get_teamshifts_invitation_event(team)
-        if event:
-            try:
-                return build_absolute_uri(
-                    'plugins:teamshifts:dashboard',
-                    kwargs={'organizer': team.organizer.slug, 'event': event.slug},
-                )
-            except NoReverseMatch:
-                pass
-    return _get_team_page_url(team)
 
 
 def send_team_invitation_email(
