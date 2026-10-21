@@ -1648,6 +1648,7 @@ async function stopDragging(event?: PointerEvent): Promise<void> {
       if (session.code && !session.deletedRoom) {
         const movedSession = schedule.value?.talks.find((s) => Number(s.id) === Number(session.id))
         if (movedSession && (mode === 'shifts' || mode === 'public-shifts')) {
+          if (movedSession.room == null) return
           movedSession.room = undefined
           await saveTalk(movedSession)
           api.fetchWarnings()
