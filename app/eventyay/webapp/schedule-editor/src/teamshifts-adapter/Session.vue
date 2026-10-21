@@ -22,7 +22,7 @@
 					span.role-name
 						span.role-name-text {{ getLocalizedString(role.name) }}
 						span.role-restricted-tag(v-if="role.is_restricted", :title="$t('Volunteers cannot self-claim this role; requires manual assignment.')") {{ $t('Restricted') }}
-					span.role-badge(:class="getCapacityClass(role)") {{ role.assigned.length }}/{{ role.capacity }} {{ $t('assigned') }}
+					span.role-badge(:class="getCapacityClass(role)") {{ capacityLabel(role) }}
 				.role-assignees
 					ul.role-assignee-list(v-if="role.assigned.length")
 						li.role-assignee(v-for="(user, i) in sortedAssignees(role)", :key="user.id || i")
@@ -56,6 +56,7 @@
 import { computed } from 'vue'
 import moment, { Moment } from 'moment-timezone'
 import { getLocalizedString } from '~/utils'
+import { translate as $t } from '~/lib/i18n'
 import { getCapabilities, resolveMode, resolveSessionKind, getClaimedShiftIds, getCsrfToken, getClaimBaseUrl } from '~/teamshifts-adapter'
 import type { Capabilities } from '~/teamshifts-adapter/types'
 import type { RoleAssignment } from '~/schemas'
@@ -142,6 +143,9 @@ const getCapacityClass = (role: RoleAssignment) => {
   if (role.assigned.length === 0) return 'badge-empty'
   return 'badge-partial'
 }
+
+const capacityLabel = (role: RoleAssignment) =>
+  $t('{{assigned}}/{{capacity}} needed', { assigned: role.assigned.length, capacity: role.capacity })
 
 const sortedAssignees = (role: RoleAssignment) =>
   [...role.assigned].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }))
