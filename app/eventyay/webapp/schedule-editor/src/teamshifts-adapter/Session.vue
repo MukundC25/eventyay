@@ -229,16 +229,18 @@ const isShortSession = computed<boolean>(() => {
 const durationPretty = computed<string | undefined>(() => {
   const minutes = durationMinutes.value
   if (!minutes) return undefined
+  const minLabel = $t('min')
+  const hourLabel = $t('h')
 
   if (minutes <= 60) {
-    return `${minutes}min`
+    return `${minutes}${minLabel}`
   }
   const hours = Math.floor(minutes / 60)
   const leftoverMinutes = minutes % 60
   if (leftoverMinutes) {
-    return `${hours}h${leftoverMinutes}min`
+    return `${hours}${hourLabel}${leftoverMinutes}${minLabel}`
   }
-  return `${hours}h`
+  return `${hours}${hourLabel}`
 })
 
 function onPointerDown(event: PointerEvent): void {
