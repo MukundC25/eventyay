@@ -147,7 +147,7 @@ const getCapacityClass = (role: RoleAssignment) => {
 }
 
 const capacityLabel = (role: RoleAssignment) =>
-  $t('{{assigned}}/{{capacity}} needed', { assigned: role.assigned.length, capacity: role.capacity })
+  $t('{{assigned}}/{{capacity}} filled', { assigned: role.assigned.length, capacity: role.capacity })
 
 const sortedAssignees = (role: RoleAssignment) =>
   [...role.assigned].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }))
